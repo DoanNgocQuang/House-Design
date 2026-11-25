@@ -1,600 +1,343 @@
-<p align="center">
-  <img src="doc/assets/banner.jpg" alt="Paperclip is the app people use to manage AI agents for work." width="720" />
-</p>
+# Studio Nhà 3D
 
-<p align="center">
-  <a href="#quickstart"><strong>Quickstart</strong></a> &middot;
-  <a href="https://docs.paperclip.ing"><strong>Docs</strong></a> &middot;
-  <a href="https://github.com/paperclipai/paperclip"><strong>GitHub</strong></a> &middot;
-  <a href="https://discord.gg/paperclipai"><strong>Discord</strong></a> &middot;
-  <a href="https://x.com/papercliping"><strong>Twitter</strong></a> &middot;
-  <a href="https://paperclip.ing"><strong>Website</strong></a>
-</p>
+**Công ty AI gồm 7 agent, biến mô tả bằng chữ hoặc ảnh thành mô hình nhà 3D xem ngay trên trình duyệt.**
 
-<p align="center">
-  <a href="https://github.com/paperclipai/paperclip/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a>
-  <a href="https://github.com/paperclipai/paperclip/stargazers"><img src="https://img.shields.io/github/stars/paperclipai/paperclip?style=flat" alt="Stars" /></a>
-  <a href="https://discord.gg/paperclipai"><img src="https://img.shields.io/badge/discord-join-7289da" alt="Discord" /></a>
-  <a href="https://superagent.sh"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.superagent.sh/api/badge/paperclipai/paperclip/shield.svg?theme=dark&accent=teal&variant=scanned" /><img src="https://www.superagent.sh/api/badge/paperclipai/paperclip/shield.svg?theme=light&accent=teal&variant=scanned" alt="Security posture verified by Superagent" /></picture></a>
-</p>
+> [!IMPORTANT]
+> **Dự án này được phát triển từ [Paperclip](https://github.com/paperclipai/paperclip)**, nền tảng mã nguồn mở (giấy phép MIT) để vận hành công ty gồm nhiều AI agent.
+>
+> Nhóm không viết lại nền tảng. Kho này lấy mã nguồn Paperclip tại commit [`3659a3a947`](https://github.com/paperclipai/paperclip/commit/3659a3a947) làm nền, rồi xây thêm công ty Studio Nhà 3D, bộ dựng nhà, trình xem 3D và các phần mở rộng.
+>
+> Đây là bài tập lớn môn Quản lý dự án phần mềm, không phải bản phát hành chính thức của Paperclip.
 
-<p align="center">
-  <a href="https://www.star-history.com/paperclipai/paperclip"><img src="https://api.star-history.com/badge?repo=paperclipai/paperclip" alt="Star History Rank" /></a>
-</p>
+## Mục lục
 
-<br/>
+- [Giới thiệu](#giới-thiệu)
+- [Phần kế thừa từ Paperclip và phần nhóm phát triển](#phần-kế-thừa-từ-paperclip-và-phần-nhóm-phát-triển)
+- [Tổ chức công ty AI](#tổ-chức-công-ty-ai)
+- [Quy trình hoạt động](#quy-trình-hoạt-động)
+- [Chức năng chính](#chức-năng-chính)
+- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
+- [Cài đặt bằng Docker](#cài-đặt-bằng-docker)
+- [Thiết lập lần đầu](#thiết-lập-lần-đầu)
+- [Sử dụng](#sử-dụng)
+- [Kết nối Telegram (không bắt buộc)](#kết-nối-telegram-không-bắt-buộc)
+- [Vận hành và sao lưu](#vận-hành-và-sao-lưu)
+- [Xử lý lỗi thường gặp](#xử-lý-lỗi-thường-gặp)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Chạy thử bộ dựng nhà](#chạy-thử-bộ-dựng-nhà)
+- [Giới hạn hiện tại](#giới-hạn-hiện-tại)
+- [Giấy phép và ghi công](#giấy-phép-và-ghi-công)
 
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/773bdfb2-6d1e-4e30-8c5f-3487d5b70c8f" width="600" controls></video>
-</div>
+## Giới thiệu
 
-<p align="center">
-  <a href="https://paperclip.ing/waitlist/"><strong>Sign up for the Paperclip Cloud waitlist →</strong></a>
-</p>
+Người dùng đóng vai **chủ dự án**: chỉ cần mô tả ngôi nhà mong muốn. Bảy agent tự hỏi lại khi thiếu thông tin, lập kế hoạch, thiết kế, dựng hình và kiểm định, giống một công ty thiết kế thu nhỏ.
 
-<br/>
+Mỗi căn nhà hoàn thành có bốn sản phẩm:
 
-# Paperclip is the app people use to manage AI agents for work.
+| File | Nội dung |
+| --- | --- |
+| `<ten-san-pham>.glb` | Mô hình 3D: sàn, tường, cửa, cầu thang, mái, nội thất, sân vườn |
+| `plan.svg` | Bản vẽ mặt bằng các tầng |
+| `iso.svg` | Hình phối cảnh |
+| `render.png` | Ảnh phối cảnh dựng bằng Blender Cycles |
 
-Open-source orchestration for teams of AI agents.
+Nguyên tắc thiết kế: **agent quyết định thiết kế, chương trình quyết định hình học.** Agent chỉ viết file JSON mô tả phòng, cửa, mái và nội thất. Bộ dựng Python kiểm tra rồi sinh mô hình. Nhờ vậy kết quả ổn định và một lỗi chỉ cần sửa một lần cho mọi căn nhà.
 
-**If OpenClaw is an _employee_, Paperclip is the _company_.**
+## Phần kế thừa từ Paperclip và phần nhóm phát triển
 
-Paperclip is a Node.js server and React UI that orchestrates a team of AI agents to run a business. Bring your own agents, assign goals, and track work and costs from one dashboard. Choose models and harnesses per agent while keeping your team's tasks, skills, permissions, and history in one place.
-
-It looks like a task manager. Under the hood: org charts, budgets, governance, goal alignment, and agent coordination.
-
-**Manage business goals, not pull requests.**
-
-|        | Step            | Example                                                            |
-| ------ | --------------- | ------------------------------------------------------------------ |
-| **01** | Define the goal | _"Build the #1 AI note-taking app to $1M MRR."_                    |
-| **02** | Hire the team   | CEO, CTO, engineers, designers, marketers — any bot, any provider. |
-| **03** | Approve and run | Review strategy. Set budgets. Hit go. Monitor from the dashboard.  |
-
-<br/>
-
-<div align="center">
-<table>
-  <tr>
-    <td align="center" rowspan="2"><strong>Works<br/>with</strong></td>
-    <td align="center" valign="top"><img src="doc/assets/logos/openclaw.svg" width="32" height="32" alt="OpenClaw" /><br/><sub>OpenClaw</sub></td>
-    <td align="center" valign="top"><img src="doc/assets/logos/claude.svg" width="32" height="32" alt="Claude Code" /><br/><sub>Claude Code</sub></td>
-    <td align="center" valign="top"><img src="ui/public/brands/codex-color.svg" width="32" height="32" alt="Codex" /><br/><sub>Codex</sub></td>
-    <td align="center" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="ui/public/brands/adapters/cursor-dark.svg" /><img src="ui/public/brands/adapters/cursor.svg" width="32" height="32" alt="Cursor and Cursor Cloud" /></picture><br/><sub>Cursor<br/>+ Cloud</sub></td>
-    <td align="center" valign="top"><img src="ui/public/brands/adapters/gemini-color.svg" width="32" height="32" alt="Gemini CLI" /><br/><sub>Gemini CLI</sub></td>
-  </tr>
-  <tr>
-    <td align="center" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="ui/public/brands/opencode-logo-dark-square.svg" /><img src="ui/public/brands/opencode-logo-light-square.svg" width="32" height="32" alt="OpenCode" /></picture><br/><sub>OpenCode</sub></td>
-    <td align="center" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="ui/public/brands/adapters/pi-dark.svg" /><img src="ui/public/brands/adapters/pi.svg" width="32" height="32" alt="Pi" /></picture><br/><sub>Pi</sub></td>
-    <td align="center" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="ui/public/brands/adapters/hermesagent-dark.svg" /><img src="ui/public/brands/adapters/hermesagent.svg" width="32" height="32" alt="Hermes and Hermes Gateway" /></picture><br/><sub>Hermes<br/>+ Gateway</sub></td>
-    <td align="center" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="ui/public/brands/adapters/grok-dark.svg" /><img src="ui/public/brands/adapters/grok.svg" width="32" height="32" alt="Grok Build" /></picture><br/><sub>Grok Build</sub></td>
-    <td align="center" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="ui/public/brands/adapters/kimi-color.svg" /><img src="ui/public/brands/adapters/kimi-color-light.svg" width="32" height="32" alt="Kimi Code" /></picture><br/><sub>Kimi Code</sub></td>
-  </tr>
-</table>
-
-<em>If it can receive a heartbeat, it's hired.</em>
-
-</div>
-
-Custom processes, HTTP endpoints, and external adapter packages extend the roster. See the [adapter overview](https://docs.paperclip.ing/reference/adapters/overview/) for setup and capabilities.
-
-<br/>
-
-## Paperclip is right for you if
-
-- ✅ You want to build **autonomous AI organizations**
-- ✅ You **coordinate many different agents** (OpenClaw, Codex, Claude, Cursor) toward a common goal
-- ✅ You have **20 simultaneous Claude Code terminals** open and lose track of what everyone is doing
-- ✅ You want agents running **autonomously 24/7**, but still want to audit work and chime in when needed
-- ✅ You want to **monitor costs** and enforce budgets
-- ✅ You want a process for managing agents that **feels like using a task manager**
-- ✅ You want to manage your autonomous businesses **from your phone**
-
-<br/>
-
-## The four pillars
-
-Four things have to work for an organization of AI agents to actually produce: the tasks, the org, the training, and the infrastructure. Paperclip is built around exactly those four pillars.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/paperclipai/paperclip/1ec33ffd8b597f7e36aac3e2fbb4665b8c42dc3c/doc/assets/four-pillars-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/paperclipai/paperclip/1ec33ffd8b597f7e36aac3e2fbb4665b8c42dc3c/doc/assets/four-pillars-light.png">
-  <img src="https://raw.githubusercontent.com/paperclipai/paperclip/1ec33ffd8b597f7e36aac3e2fbb4665b8c42dc3c/doc/assets/four-pillars-light.png" alt="The four pillars of Paperclip">
-</picture>
-
-| Pillar | Built for | What it covers |
+| Hạng mục | Paperclip cung cấp | Nhóm phát triển thêm hoặc chỉnh sửa |
 | --- | --- | --- |
-| **Agentic Task Manager** — Declare intent. Agents work. You verify the output. | Everyone, daily | Tasks, approvals & review gates · proactive agent coworkers · auditable routines & workflows · verify from diffs, screenshots & tests |
-| **Org Chart for Agents** — Roles, permissions & boundaries for humans and agents. | Managers | Mixed human + agent org chart · responsibilities, delegation, specialization · governance: who can do what · scoped secrets & company boundaries · connection permissions & responsible-user identities |
-| **Agent Employee Training** — Design, train & evaluate your AI employees. | Enablers | Skill Studio & shared org-wide skills · evals & saved test runs · active learning loops & quality metrics · performance reviews for agents · saved test inputs · skill version history & restore · reusable team templates |
-| **Agentic OS** — The infrastructure that makes the work run. | IT & platform | Cross-provider runtime: any model, any agent · sandboxing, integrations & MCP servers · SSO, GRC, RBAC & cost controls · data privacy, internal trace collection, compounding data value · personal & shared app connections · run history & opt-in tracing |
+| Điều phối agent | Công ty, agent, đánh thức agent, lịch sử chạy, phân quyền | Công ty 7 agent kèm hướng dẫn và skill, tự tạo khi cài mới |
+| Công việc | Task, bình luận, file đính kèm, phiếu hỏi, quan hệ chặn | Cây 4 cấp Yêu cầu → Epic → Task → Sub-task, story point |
+| Dựng nhà 3D | Không có | Bộ dựng `house_builder.py`, render Blender, schema `spec.json` và `layout.json` |
+| Xem mô hình | Khung xem file đính kèm | Trình xem `.glb`: tách tầng, đo, đi dạo, đổi màu, vật liệu, ánh sáng |
+| Quản lý sản phẩm | Lưu file đính kèm | Tab Files của dự án, ghi đè file trùng tên nhưng giữ nguyên liên kết |
+| Thống kê | Nhật ký và chi phí | Trang Agent Stats, theo dõi hạn mức tài khoản AI |
+| Agent Office | Hệ thống plugin | Tuỳ chỉnh plugin Agent Pixels: bố cục, ánh sáng, phòng họp, góc nhìn 3D |
+| Telegram | Hệ thống plugin | Tuỳ chỉnh plugin `paperclip-plugin-telegram`: trả lời phiếu hỏi bằng nút, tự gửi thành phẩm |
+| Triển khai | Dockerfile, Docker Compose | Đóng gói Blender, công ty mẫu và hai plugin vào image |
 
-<br/>
+Lịch sử Git tách rõ hai phần. Commit `29ac85815e` là mã nguồn Paperclip gốc. Xem toàn bộ phần nhóm thay đổi:
 
-## Features
-
-<table>
-<tr>
-<td align="center" width="33%">
-<h3>🔌 Bring Your Own Agent</h3>
-Any agent, any runtime, one org chart. If it can receive a heartbeat, it's hired.
-</td>
-<td align="center" width="33%">
-<h3>🎯 Goal Alignment</h3>
-Link tasks and projects to your organization goals. Agents receive the goal context behind their work.
-</td>
-<td align="center" width="33%">
-<h3>💓 Heartbeats</h3>
-Agents wake for assigned work, follow-up messages, or configured schedules. Delegation flows up and down the org chart.
-</td>
-</tr>
-<tr>
-<td align="center">
-<h3>💰 Cost Control</h3>
-Company, agent, and project <a href="https://docs.paperclip.ing/guides/day-to-day/costs/">budgets</a>. Track reported spend, get threshold alerts, and pause work at configured limits.
-</td>
-<td align="center">
-<h3>🏢 Multi-Organization</h3>
-One deployment, many organizations. Separate tasks, agents, permissions, and activity histories for each.
-</td>
-<td align="center">
-<h3>🎫 Task Threads</h3>
-Keep conversations, plans, blockers, files, and run history attached to the work. Assign tasks to agents or people.
-</td>
-</tr>
-<tr>
-<td align="center">
-<h3>🛡️ Governance</h3>
-Configure <a href="https://docs.paperclip.ing/guides/day-to-day/approvals/">review and approval stages</a>, approve hires, and pause, reassign, or stop work when needed.
-</td>
-<td align="center">
-<h3>📊 Org Chart</h3>
-Hierarchies, roles, reporting lines. Your agents have a boss, a title, and a job description.
-</td>
-<td align="center">
-<h3>📱 Mobile Ready</h3>
-Monitor and manage your autonomous businesses from anywhere.
-</td>
-</tr>
-<tr>
-<td align="center">
-<h3>🔗 Apps & Connections</h3>
-<a href="https://docs.paperclip.ing/connectors/">Connect services</a> such as GitHub, Notion, and Railway, or your own MCP server. Set gateway actions to Allowed, Ask first, or Off.
-</td>
-<td align="center">
-<h3>👥 Shared Agents, Personal Accounts</h3>
-Choose <a href="https://docs.paperclip.ing/connectors/access-model/">who can use a connection and which agents can access it</a>. Managed GitHub operations can use the account of the person directing the work.
-</td>
-<td align="center">
-<h3>🧠 Skills & Skill Studio</h3>
-Install or write <a href="https://docs.paperclip.ing/guides/org/skills/">shared skills</a>, test them with saved inputs, inspect results, and restore earlier versions.
-</td>
-</tr>
-<tr>
-<td align="center">
-<h3>📅 Scheduled Routines</h3>
-Run <a href="https://docs.paperclip.ing/guides/projects-workflow/routines/">recurring work</a> on a schedule or trigger it through an API or webhook. Each run has a task, an owner, and a history.
-</td>
-<td align="center">
-<h3>📎 Artifacts & Feedback</h3>
-Find the <a href="https://docs.paperclip.ing/guides/day-to-day/artifacts/">files and documents agents produce</a>. Preview supported formats and leave comments on specific passages in documents.
-</td>
-<td align="center">
-<h3>📦 Ready-Made Teams</h3>
-Preview and install <a href="https://docs.paperclip.ing/guides/org/team-catalog/">teams</a> with roles, skills, projects, and routines. Choose their runtimes and make the setup your own.
-</td>
-</tr>
-</table>
-
-Experimental **Agent Chat** and **chat/email connectors** add conversations with agents in Paperclip and through configured services such as Slack, Discord, Telegram, and AgentMail. Enable the relevant instance settings to try them.
-
-<br/>
-
-## Problems Paperclip solves
-
-| Without Paperclip                                                                                                                     | With Paperclip                                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| ❌ You have 20 Claude Code tabs open and can't track which one does what. On reboot you lose everything.                              | ✅ Tasks are ticket-based, conversations are threaded, sessions persist across reboots.                                                |
-| ❌ You manually gather context from several places to remind your bot what you're actually doing.                                     | ✅ Context flows from the task up through the project and company goals — your agent always knows what to do and why.                  |
-| ❌ Folders of agent configs are disorganized and you're re-inventing task management, communication, and coordination between agents. | ✅ Paperclip gives you org charts, ticketing, delegation, and governance out of the box — so you run a company, not a pile of scripts. |
-| ❌ Runaway loops waste hundreds of dollars of tokens and max your quota before you even know what happened.                           | ✅ Spend tracking, budget alerts, and automatic pauses help you control the cost of ongoing work.                                       |
-| ❌ You have recurring jobs (customer support, social, reports) and have to remember to manually kick them off.                        | ✅ Routines create assigned tasks on a schedule, with outputs and run history you can inspect.                                         |
-| ❌ You have an idea, you have to find your repo, fire up Claude Code, keep a tab open, and babysit it.                                | ✅ Add a task in Paperclip. Your coding agent works on it until it's done. Management reviews their work.                              |
-
-<br/>
-
-## Why Paperclip is special
-
-Paperclip handles the hard orchestration details correctly.
-
-|                                   |                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Atomic task checkout.**         | A single assignee and execution locks prevent competing runs from claiming the same task.                    |
-| **Persistent work context.**      | Tasks, comments, and documents stay in Paperclip. Supporting adapters resume saved sessions across runs.       |
-| **Runtime skill injection.**      | Agents can learn Paperclip workflows and project context at runtime, without retraining.                      |
-| **Governance with rollback.**     | Approval gates are enforced, config changes are revisioned, and bad changes can be rolled back safely.        |
-| **Accountable connections.**      | Human access, agent eligibility, and gateway action permissions are separate controls. Approve a call once or save a revocable rule. |
-| **Goal-aware execution.**         | Linked tasks and projects carry goal ancestry so agents see the "why," not just a title.                      |
-| **Portable company templates.**   | Export/import orgs, agents, and skills with secret scrubbing and collision handling.                          |
-| **Organization boundaries.**      | Company-scoped access checks keep each organization's work, agents, and activity separate within one deployment. |
-
-<br/>
-
-## What's Under the Hood
-
-Paperclip is a full control plane, not a wrapper. Before you build any of this yourself, know that it already exists:
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                       PAPERCLIP SERVER                       │
-│                                                              │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  │
-│  │Identity & │  │  Work &   │  │ Heartbeat │  │Governance │  │
-│  │  Access   │  │   Tasks   │  │ Execution │  │& Approvals│  │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  │
-│                                                              │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  │
-│  │ Org Chart │  │Workspaces │  │  Plugins  │  │  Budget   │  │
-│  │ & Agents  │  │ & Runtime │  │           │  │ & Costs   │  │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  │
-│                                                              │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  │
-│  │ Routines  │  │ Secrets & │  │ Activity  │  │  Company  │  │
-│  │& Schedules│  │  Storage  │  │ & Events  │  │Portability│  │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  │
-└──────────────────────────────────────────────────────────────┘
-         ▲              ▲              ▲              ▲
-   ┌─────┴─────┐  ┌─────┴─────┐  ┌─────┴─────┐  ┌─────┴─────┐
-   │  Claude   │  │   Codex   │  │   CLI     │  │ HTTP/web  │
-   │   Code    │  │           │  │  agents   │  │   bots    │
-   └───────────┘  └───────────┘  └───────────┘  └───────────┘
+```sh
+git diff --stat 29ac85815e main
 ```
 
-### The Systems
+Tài liệu của nền tảng gốc: [README của Paperclip](https://github.com/paperclipai/paperclip#readme) và thư mục [`doc/`](doc/).
 
-<table>
-<tr>
-<td width="50%">
+## Tổ chức công ty AI
 
-**Identity & Access** — Two deployment modes (trusted local or authenticated), human roles and permissions, agent API keys, short-lived run JWTs, company memberships, and invite flows. Responsible-user attribution follows work through delegation and supported managed connections.
-
-</td>
-<td width="50%">
-
-**Org Chart & Agents** — Agents have roles, titles, reporting lines, permissions, and budgets. Adapter examples match the diagram: Claude Code, Codex, CLI agents such as Cursor/Gemini/bash, HTTP/webhook bots such as OpenClaw, and external adapter plugins. If it can receive a heartbeat, it's hired.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Work & Task System** — Issues carry company/project/goal/parent links, atomic checkout with execution locks, first-class blocker dependencies, comments, documents, attachments, work products, labels, and inbox state. Search across work, review document revisions, and leave anchored feedback.
-
-</td>
-<td>
-
-**Heartbeat Execution** — DB-backed wakeup queue with coalescing, budget checks, workspace resolution, secret injection, skill loading, and adapter invocation. Runs produce logs, usage records, and adapter-specific session state. Bounded recovery handles supported failures and surfaces cases that need human action.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Workspaces & Runtime** — Project repositories and workspaces, optional isolated execution workspaces (git worktrees, operator branches), and runtime services (dev servers, preview URLs). Sandbox providers extend execution beyond the local host; availability depends on the configured environment and adapter.
-
-</td>
-<td>
-
-**Governance & Approvals** — Board approval workflows, execution policies with review/approval stages, decision tracking, budget hard-stops, and agent pause/resume/terminate. Configured task reviews govern completion; connection action approvals govern calls through the tool gateway.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Budget & Cost Control** — Token and cost tracking by company, agent, project, goal, issue, provider, and model. Scoped budget policies with warning thresholds and hard stops. Enforcement uses recorded spend; usage reporting and in-flight work can delay a stop.
-
-</td>
-<td>
-
-**Routines & Schedules** — Recurring tasks with cron, webhook, and API triggers. Concurrency and catch-up policies. Each routine execution creates a tracked issue and wakes the assigned agent — no manual kick-offs needed.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**[Plugins](https://docs.paperclip.ing/administration/plugins/)** — Instance-wide plugin system with out-of-process workers, capability-gated host services, job scheduling, tool exposure, and UI contributions. Extend Paperclip without forking it.
-
-</td>
-<td>
-
-**Secrets & Storage** — Company secrets and per-person secret values, encrypted credential storage, local or S3-compatible file storage, attachments, and work products. Secret references supply credentials to authorized runs without copying values into ordinary agent configuration.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Activity & Events** — Mutating actions, heartbeat state changes, cost events, approvals, comments, and work products are recorded as durable activity so operators can audit what happened and why.
-
-</td>
-<td>
-
-**[Company Portability](https://docs.paperclip.ing/guides/power/export-import/)** — Preview, export, and import organization packages with agents, skills, and optional projects, routines, tasks, and attachments. Referenced secret values are omitted; review packages before sharing because plain environment values and local paths can remain. Packages share an operating setup; full-instance recovery uses backups.
-
-</td>
-</tr>
-</table>
-
-<br/>
-
-## What Paperclip is not
-
-|                              |                                                                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Not just a chatbot.**      | Conversations stay attached to tasks, plans, decisions, and outputs. Experimental Agent Chat can hand work off to assigned tasks.    |
-| **Not an agent framework.**  | We don't tell you how to build agents. We tell you how to run a company made of them.                                |
-| **Not just a workflow builder.** | Routines operate within an organization, with roles, goals, budgets, and governance.                  |
-| **Not a prompt manager.**    | Agents bring their own prompts, models, and runtimes. Paperclip manages the organization they work in.               |
-| **Not limited to one agent.** | Start with one agent and grow into a team with shared skills, delegation, and review.                                              |
-| **Not only for code review.** | Coding and PR review fit alongside research, operations, content, and other work.                                                  |
-
-<br/>
-
-## Quickstart
-
-Open source. Self-hosted. No Paperclip account required. Follow the [guided quickstart](https://docs.paperclip.ing/guides/getting-started/five-minute-path/) to set up your first agent.
-
-### Just ask your agent to install Paperclip
-
-Share the [installation guide](https://docs.paperclip.ing/reference/cli/installation/) with your agent.
-
-### Or install it yourself
-
-With **Node.js 24.11 or newer** installed:
-
-```bash
-npx paperclipai@latest onboard --yes
+```text
+Chủ dự án (người dùng)
+└── CEO                   tiếp nhận yêu cầu, gửi phiếu hỏi, báo kết quả
+    └── PM                lập kế hoạch, chia Epic thành Task và Sub-task
+        ├── Phân tích     chữ hoặc ảnh → spec.json
+        ├── Kiến trúc sư  spec.json → layout.json
+        ├── Nội thất      xếp đồ vào layout.json
+        ├── Dựng hình     layout.json → .glb, plan.svg, iso.svg, render.png
+        └── Kiểm định     nghiệm thu: Đạt hoặc trả về sửa
 ```
 
-The CLI runs from npm's cache; your instance configuration and data persist locally.
+| Agent | Đầu vào | Đầu ra | AI mặc định khi cài mới |
+| --- | --- | --- | --- |
+| CEO | Yêu cầu của chủ dự án | Phiếu hỏi, một Epic cho mỗi nhà, lời báo kết quả | Codex |
+| PM | Epic | Cây Task, Sub-task và quan hệ chặn | Codex |
+| Phân tích | Yêu cầu và câu trả lời | `spec.json` | Claude |
+| Kiến trúc sư | `spec.json` | `layout.json` | Claude |
+| Nội thất | `layout.json` | `layout.json` có nội thất | Claude |
+| Dựng hình | `layout.json` cuối | `.glb`, `plan.svg`, `iso.svg`, `render.png` | Codex |
+| Kiểm định | Toàn bộ file | Biên bản nghiệm thu | Claude |
 
-See the [installation guide](https://docs.paperclip.ing/reference/cli/installation/) for managed installs, pinned versions, canary and git-ref installs, updates, rollback, service management, and uninstalling.
+Có thể đổi nhà cung cấp và mô hình của từng agent trong giao diện, không cần sửa mã nguồn.
 
-For an isolated manual test instance that is already initialized with a CEO
-agent, use `test-drive`. It stays in the foreground, never installs a service
-or creates a first task, and opens the browser only after setup succeeds:
+## Quy trình hoạt động
 
-```bash
-ANTHROPIC_API_KEY=... npx paperclipai test-drive
-OPENAI_API_KEY=... npx paperclipai test-drive --harness codex
-OPENROUTER_API_KEY=... npx paperclipai test-drive \
-  --harness opencode \
-  --model openrouter/anthropic/claude-sonnet-4.5
+```mermaid
+flowchart LR
+    A["Chủ dự án<br/>mô tả bằng chữ hoặc ảnh"] --> B["CEO"]
+    B -->|thiếu thông tin| Q["Phiếu hỏi"]
+    Q --> B
+    B -->|tạo Epic| C["PM<br/>chia Task, Sub-task"]
+    C --> D["Phân tích<br/>spec.json"]
+    D --> E["Kiến trúc sư<br/>layout.json"]
+    E --> F["Nội thất"]
+    F --> G["Dựng hình<br/>glb, svg, png"]
+    G --> H{"Kiểm định"}
+    H -->|"chưa đạt, tối đa 2 vòng"| C
+    H -->|đạt| I["CEO báo kết quả<br/>web và Telegram"]
 ```
 
-Each run without `--data-dir` gets a unique, retained temporary directory; its
-absolute path is printed at startup. Pass `--data-dir` to reuse one, or
-`--no-browser` to leave the initialized instance unopened. When invoked from a
-linked Git worktree, `test-drive` also enables task execution in that worktree.
-See the [test-drive guide](https://docs.paperclip.ing/reference/cli/test-drive/) for credential and
-reuse behavior.
+1. Chủ dự án tạo task và giao cho CEO.
+2. Nếu yêu cầu còn thiếu, CEO gửi phiếu hỏi có sẵn lựa chọn.
+3. CEO tạo một Epic và giao PM. PM chia thành Task, Sub-task và khai báo việc nào chặn việc nào.
+4. Các agent làm theo thứ tự phụ thuộc, có bước xem chéo để phát hiện lỗi sớm.
+5. Kiểm định nghiệm thu. PM giao mục chưa đạt lại cho đúng agent phụ trách, tối đa hai vòng.
+6. CEO báo kết quả. Nếu đã kết nối Telegram, sản phẩm được gửi về điện thoại.
 
-> **Troubleshooting: private npm registry `.npmrc`**
->
-> If this fails with an `E404` for `paperclipai` (or similar) and you use a private npm registry (for example GitHub Packages) via a global `~/.npmrc`, `npx` may be resolving `paperclipai` against that private registry instead of the public npm registry.
->
-> Diagnostic:
->
-> ```bash
-> npm config get registry
-> ```
->
-> Workaround (cross-platform; force the public npm registry for this command):
->
-> ```bash
-> npx --registry https://registry.npmjs.org paperclipai@latest onboard --yes
-> ```
+## Chức năng chính
 
-That quickstart path now defaults to trusted local loopback mode for the fastest first run. To start in authenticated/private mode instead, choose a bind preset explicitly:
+- **Tiếp nhận yêu cầu** bằng chữ hoặc ảnh, có phiếu hỏi khi thiếu thông tin.
+- **Quản lý công việc 4 cấp**: trạng thái, độ ưu tiên, story point, quan hệ chặn, người phụ trách.
+- **Trình xem nhà 3D**: xoay, phóng, tách tầng, ẩn hiện bộ phận, đo khoảng cách, đi dạo bên trong, chụp ảnh, đổi và lưu bảng màu.
+- **Tab Files**: gom phiên bản mới nhất của các file trong dự án.
+- **Agent Stats**: thống kê lượt chạy theo agent, dự án, Epic và hạn mức tài khoản AI.
+- **Agent Office**: văn phòng pixel, mỗi agent là một nhân vật.
+- **Telegram hai chiều**: nhận thông báo, trả lời phiếu hỏi bằng nút, nhận ảnh và mô hình thành phẩm.
 
-```bash
-npx paperclipai@latest onboard --yes --bind lan
-# or:
-npx paperclipai@latest onboard --yes --bind tailnet
+## Công nghệ sử dụng
+
+| Nhóm | Công nghệ |
+| --- | --- |
+| Nền tảng | **Paperclip** (commit `3659a3a947`) |
+| Máy chủ | Node.js, TypeScript, Express, Drizzle ORM, PostgreSQL nhúng, Better Auth |
+| Giao diện | React, Vite, Tailwind CSS, Three.js |
+| Dựng nhà | Python 3 (chỉ dùng thư viện chuẩn), Blender 4.5.17 LTS |
+| AI | Claude (Anthropic), Codex (OpenAI) |
+| Kiểm thử | Vitest, `node --test`, lệnh `selftest` của bộ dựng |
+| Triển khai | Docker, Docker Compose |
+
+## Cài đặt bằng Docker
+
+### 1. Chuẩn bị
+
+| Yêu cầu | Ghi chú |
+| --- | --- |
+| [Git](https://git-scm.com/downloads) | Để tải mã nguồn |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Đã gồm Docker Compose. Trên Windows nên dùng nền WSL 2 |
+| Ổ đĩa trống | Image sau khi build khoảng 12 GB, nên để trống từ 30 GB |
+| Internet | Lần build đầu tải các gói phụ thuộc và Blender |
+| Tài khoản AI | Tài khoản Claude và Codex, hoặc API key của Anthropic và OpenAI |
+
+Không cần cài Node.js, Python, PostgreSQL hay Blender trên máy. Tất cả nằm trong container.
+
+### 2. Tải mã nguồn
+
+**Windows (PowerShell):**
+
+```powershell
+git clone -c core.autocrlf=false -c core.longpaths=true https://github.com/DoanNgocQuang/House-Design.git
+cd House-Design
 ```
 
-If you already have Paperclip configured, rerunning `onboard` keeps the existing config in place. Use `npx paperclipai configure` to edit settings.
+**Linux hoặc macOS:**
 
-Or manually:
-
-```bash
-git clone https://github.com/paperclipai/paperclip.git
-cd paperclip
-pnpm install
-pnpm dev
+```sh
+git clone https://github.com/DoanNgocQuang/House-Design.git
+cd House-Design
 ```
 
-This starts the UI and API at `http://localhost:3100`. An embedded PostgreSQL database is created automatically — no setup required.
+> [!WARNING]
+> Trên Windows phải giữ `core.autocrlf=false`. Nếu Git đổi xuống dòng sang CRLF, mã băm của các file migration sẽ sai và hệ thống có thể không build hoặc không khởi động được.
 
-> **Requirements:** Node.js 24.11+, pnpm 9.15+
+### 3. Tạo file `docker/.env`
 
-Local Claude and Codex subscription sign-in also needs Python 3 and the
-corresponding provider CLI on the Paperclip host. The Docker image includes them.
+File này chứa hai chuỗi bí mật ngẫu nhiên, **khác nhau**. Chỉ tạo một lần rồi giữ nguyên cho những lần chạy sau. Chạy lệnh ở thư mục gốc của dự án.
 
-Source development also builds the native Paperclip Runner when enabled (the self-hosted default). Install a Rust toolchain, or set `PAPERCLIP_RUNNER_BINARY` to a compatible prebuilt runner.
+**Windows (PowerShell):**
 
-<br/>
-
-## FAQ
-
-**Q: Is this project maintained or just slop?**
-
-**A:** Paperclip is maintained by the [Paperclip team](https://paperclip.ing). We've merged [over 2,700 pull requests](https://github.com/paperclipai/paperclip/pulls?q=is%3Apr+is%3Amerged).
-
-<br/>
-
-**Q: What does a typical setup look like?**
-
-**A:** Locally, a single Node.js process manages an embedded Postgres and local file storage. For production, point it at your own Postgres and deploy however you like. Configure projects, agents, and goals — the agents take care of the rest.
-
-For remote access, use authenticated mode with a private-network bind such as Tailscale, or deploy the persistent server with Docker. See [deployment modes](https://docs.paperclip.ing/reference/deploy/deployment-modes/) and the [Docker guide](https://docs.paperclip.ing/reference/deploy/docker/).
-
-<br/>
-
-**Q: Can I run multiple companies?**
-
-**A:** Yes. A single deployment can host multiple organizations with company-scoped data and access checks.
-
-<br/>
-
-**Q: How is Paperclip different from agents like OpenClaw or Claude Code?**
-
-**A:** Paperclip _uses_ those agents. It orchestrates them into a company — with org charts, budgets, goals, governance, and accountability.
-
-<br/>
-
-**Q: Why should I use Paperclip instead of just pointing my OpenClaw to Asana or Trello?**
-
-**A:** Agent orchestration has subtleties in how you coordinate who has work checked out, how to maintain sessions, monitoring costs, establishing governance - Paperclip does this for you.
-
-(Bring-your-own-ticket-system is on the Roadmap)
-
-<br/>
-
-**Q: Do agents run continuously?**
-
-**A:** Agents wake for assigned work and follow-up messages. Optional timer heartbeats let them check for work periodically; routines create recurring tasks on their own schedules. You can also connect externally running agents such as OpenClaw. A mention alone does not assign work or wake another agent.
-
-<br/>
-
-## Development
-
-```bash
-pnpm dev              # Full dev (API + UI, watch mode)
-pnpm dev:once         # Full dev without file watching
-pnpm dev:server       # Server only
-pnpm dev:mobile       # Serve prebuilt UI on :3101 for phones/tablets (proxies /api → :3100)
-pnpm dev:both         # Run `pnpm dev` and `pnpm dev:mobile` together
-pnpm build            # Build all
-pnpm typecheck        # Type checking
-pnpm test             # Cheap default test run (Vitest only)
-pnpm test:watch       # Vitest watch mode
-pnpm test:e2e         # Playwright browser suite
-pnpm db:generate      # Generate DB migration
-pnpm db:migrate       # Apply migrations
+```powershell
+function New-Secret { $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') }) }
+"BETTER_AUTH_SECRET=$(New-Secret)", "PAPERCLIP_TOOL_ACTION_SIGNING_SECRET=$(New-Secret)" | Set-Content -Encoding ascii docker\.env
 ```
 
-`pnpm test` does not run Playwright. Browser suites stay separate and are typically run only when working on those flows or in CI.
+**Linux hoặc macOS:**
 
-See [doc/DEVELOPING.md](doc/DEVELOPING.md) for the full development guide.
+```sh
+printf 'BETTER_AUTH_SECRET=%s\nPAPERCLIP_TOOL_ACTION_SIGNING_SECRET=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > docker/.env
+```
 
-<br/>
+Các biến dùng được trong `docker/.env`:
 
-## Roadmap
+| Biến | Bắt buộc | Mặc định | Ý nghĩa |
+| --- | --- | --- | --- |
+| `BETTER_AUTH_SECRET` | Có | Không có | Ký phiên đăng nhập |
+| `PAPERCLIP_TOOL_ACTION_SIGNING_SECRET` | Nên có | Trống | Ký các thao tác cần phê duyệt |
+| `ANTHROPIC_API_KEY` | Không | Trống | API key của Anthropic |
+| `OPENAI_API_KEY` | Không | Trống | API key của OpenAI |
+| `PAPERCLIP_PORT` | Không | `3100` | Cổng trên máy |
+| `PAPERCLIP_PUBLIC_URL` | Không | `http://localhost:3100` | Địa chỉ người dùng mở. Đổi cổng thì đổi cả biến này |
+| `PAPERCLIP_ALLOWED_HOSTNAMES` | Không | Trống | Tên máy khác được phép truy cập, cách nhau bằng dấu phẩy |
+| `PAPERCLIP_DATA_DIR` | Không | `../data/docker-paperclip` | Nơi lưu dữ liệu |
 
-- ✅ Plugin system (e.g. add a knowledge base, custom tracing, queues, etc)
-- ✅ Get OpenClaw / claw-style agent employees
-- ✅ companies.sh - import and export entire organizations
-- ✅ Easy AGENTS.md configurations
-- ✅ Skills Manager, Skill Studio & Skills Store
-- ✅ Scheduled Routines
-- ✅ Better Budgeting
-- ✅ Agent Reviews and Approvals
-- ✅ Multiple Human Users
-- ✅ Cloud / Sandbox agents (e2b, Cloudflare, Daytona, Modal, Novita, boxd, self-hosted Kubernetes)
-- ✅ Artifacts & Work Products
-- ✅ Deep Planning (planning mode, revisioned plans, plan approvals)
-- ✅ Enforced Outcomes (watchdogs, recovery actions, review gates)
-- ✅ MCP Tool Gateway & Apps (governed tool access)
-- ✅ Secrets Manager with per-agent access
-- ✅ Activity log & action attribution
-- ✅ Self-healing runs & automatic recovery
-- ✅ Agent evals & feedback
-- ✅ Connected Apps
-- ✅ Personal & Shared AI Accounts
-- ✅ Shared Agents Use Personal GitHub Identities
-- ✅ Skill Version History & Restore
-- ✅ Document Comments & Revision History
-- ✅ Company-Wide Search
-- ✅ Multi-Model & Multi-Harness Teams
-- 🟡 Memory / Knowledge
-- ⚪ MAXIMIZER MODE
-- ⚪ Work Queues
-- ⚪ Self-Organization
-- ⚪ Automatic Organizational Learning
-- 🟡 Agent Chat
-- 🟡 Cloud deployments
-- ⚪ Desktop App
-- ⚪ Bring-your-own-ticket-system (Asana / Linear / Jira as on-ramps)
+> [!CAUTION]
+> Không commit `docker/.env`. File này đã nằm trong `.gitignore`.
 
-This is the short roadmap preview. See the full roadmap in [ROADMAP.md](ROADMAP.md).
+### 4. Build và chạy
 
-<br/>
+```sh
+cd docker
+docker compose -f docker-compose.quickstart.yml up -d --build
+```
 
-## Community & Plugins
+Lần đầu mất khá lâu vì phải build mã nguồn và tải Blender. Các lần sau nhanh hơn nhờ cache.
 
-Find Plugins and more at [awesome-paperclip](https://github.com/gsxdsm/awesome-paperclip)
+### 5. Kiểm tra
 
-## Observability
+```sh
+docker compose -f docker-compose.quickstart.yml ps
+docker compose -f docker-compose.quickstart.yml logs -f
+```
 
-Paperclip ships with opt-in OpenTelemetry auto-instrumentation for the server (traces only). It activates when `OTEL_EXPORTER_OTLP_ENDPOINT` is set and supports `grpc`, `http/protobuf`, and `http/json` via the standard `OTEL_EXPORTER_OTLP_PROTOCOL` env var. `@opentelemetry/api` is a normal server dependency; the SDK, auto-instrumentation, and exporter packages are optional peer dependencies — install them only if you want tracing. See [doc/observability.md](doc/observability.md) for install commands and the full env-var reference.
+Mở <http://localhost:3100/api/health>. Kết quả có `"status":"ok"` nghĩa là máy chủ đã hoạt động. Giao diện nằm ở <http://localhost:3100>.
 
-Paperclip also ships with opt-in Sentry error monitoring for the server and the browser. Set `SENTRY_DSN_FRONTEND` to activate it for the browser and `SENTRY_DSN_BACKEND` to activate it for the server — each variable is optional, and the legacy `SENTRY_DSN` variable still works as a fallback for either component. The supported server SDK version is `@sentry/node@10.71.0`; it is an optional peer dependency for the server, so install it only if you want error monitoring. The browser SDK, `@sentry/browser`, is pinned to the same exact version. See [doc/observability.md](doc/observability.md#sentry-error-monitoring) for the install command, the privacy settings, and the full default capture set.
+## Thiết lập lần đầu
 
-## Telemetry
+1. Mở <http://localhost:3100>, chọn **Sign in / Create account** và tạo tài khoản.
+2. Bấm **Claim this instance** để nhận quyền quản trị.
+3. Công ty **Studio Nhà 3D** được tạo tự động với 7 agent, hướng dẫn và skill. Hai plugin Agent Office và Telegram cũng được cài sẵn.
+4. Mở **Connectors** ở thanh bên, kết nối tài khoản Claude và Codex.
+5. Mở **Agents**, vào từng agent và chọn tài khoản AI cùng mô hình. Nếu chỉ có một nhà cung cấp, đổi cả 7 agent sang nhà cung cấp đó.
+6. Tạo một project, ví dụ `Thiết kế nhà`.
 
-Paperclip collects anonymous usage telemetry to help us understand how the product is used and improve it. No personal information, issue content, prompts, file paths, or secrets are ever collected. Private repository references are hashed with a per-install salt before being sent.
+Công ty mẫu chỉ được tạo **một lần** cho mỗi bộ dữ liệu.
 
-Contributors changing emitted telemetry events should follow the [Telemetry Data Contract](packages/shared/src/telemetry/README.md).
-For proposed first-party events that are not in the generated contract yet, follow [Telemetry Workflow](doc/TELEMETRY_WORKFLOW.md).
+## Sử dụng
 
-Telemetry is **enabled by default** and can be disabled with any of the following:
+1. Trong project, tạo task mới và giao cho **CEO**. Ví dụ:
 
-| Method               | How                                                     |
-| -------------------- | ------------------------------------------------------- |
-| Environment variable | `PAPERCLIP_TELEMETRY_DISABLED=1`                        |
-| Standard convention  | `DO_NOT_TRACK=1`                                        |
-| CI environments      | Automatically disabled when `CI=true`                   |
-| Config file          | Set `telemetry.enabled: false` in your Paperclip config |
+   > Thiết kế nhà phố 2 tầng, lô đất 5 × 18 m, 3 phòng ngủ, mái Thái, có sân trước để xe và một khoảng cây xanh.
 
-## Contributing
+2. Nếu CEO gửi phiếu hỏi, chọn câu trả lời ngay trong task.
+3. Theo dõi tiến độ ở **Tasks**, **Agent Stats** hoặc **Agent Office**.
+4. Mở file `.glb` trong task hoặc trong tab **Files** của project để xem nhà 3D.
+5. Muốn sửa, bình luận vào task. Muốn đổi màu, đổi trực tiếp trong trình xem rồi lưu bảng màu.
 
-We welcome contributions. See the [contributing guide](CONTRIBUTING.md) for details.
+## Kết nối Telegram (không bắt buộc)
 
-**[We're hiring](https://paperclip.ing/about/#careers)**
+1. Tạo bot bằng [@BotFather](https://t.me/BotFather) và lấy token.
+2. Trong Paperclip, mở trang cài đặt plugin **Telegram** và lưu token dưới dạng secret.
+3. Ở mục **Board Access Connection**, cấp quyền để bot trả lời phiếu hỏi thay bạn.
+4. Điền **Fallback Chat ID**, **Allowed Telegram user IDs** và **Allowed Telegram chat IDs**. Dùng các ID này để giới hạn ai được điều khiển bot và nhận file.
+5. Bật **Enable bot commands** và **Enable inbound replies**, rồi gõ `/status` cho bot để thử.
 
-<br/>
+Nếu `PAPERCLIP_PUBLIC_URL` là `localhost`, các liên kết trong tin nhắn không mở được trên điện thoại.
 
-## Community
+## Vận hành và sao lưu
 
-- [Discord](https://discord.gg/paperclipai) — Join the community
-- [Twitter / X](https://x.com/papercliping) — Follow updates and announcements
-- [GitHub Issues](https://github.com/paperclipai/paperclip/issues) — bugs and feature requests
-- [GitHub Discussions](https://github.com/paperclipai/paperclip/discussions) — ideas and RFC
+Chạy các lệnh sau trong thư mục `docker`.
 
-<br/>
+| Việc | Lệnh |
+| --- | --- |
+| Xem nhật ký | `docker compose -f docker-compose.quickstart.yml logs -f` |
+| Dừng | `docker compose -f docker-compose.quickstart.yml stop` |
+| Chạy lại | `docker compose -f docker-compose.quickstart.yml start` |
+| Cập nhật sau `git pull` | `docker compose -f docker-compose.quickstart.yml up -d --build` |
+| Gỡ container, giữ dữ liệu | `docker compose -f docker-compose.quickstart.yml down` |
 
-## License
+Dữ liệu nằm ở `data/docker-paperclip`, ngoài container, nên build lại không mất dữ liệu. Để sao lưu, dừng container rồi sao chép thư mục này cùng file `docker/.env`.
 
-MIT &copy; 2026 [Paperclip Labs, Inc](https://paperclip.ing)
+## Xử lý lỗi thường gặp
 
-## Star History
+| Hiện tượng | Cách xử lý |
+| --- | --- |
+| `BETTER_AUTH_SECRET must be set` | Chưa có `docker/.env`, hoặc đang chạy lệnh ngoài thư mục `docker` |
+| `Filename too long` khi clone | Clone lại với `-c core.longpaths=true` |
+| Lỗi mã băm migration, hoặc build báo file sinh tự động bị lệch | Có thể mã nguồn bị đổi sang CRLF. Clone lại với `-c core.autocrlf=false` |
+| Cổng 3100 đang bận | Đặt `PAPERCLIP_PORT` và `PAPERCLIP_PUBLIC_URL` trong `docker/.env` |
+| Build dừng vì hết ổ đĩa | Giải phóng ổ đĩa, hoặc tăng giới hạn ổ đĩa của Docker Desktop |
+| Agent báo lỗi ngay khi chạy | Kiểm tra tài khoản AI của agent, hạn mức và tên mô hình |
+| Không vào được từ máy khác | Thêm tên máy vào `PAPERCLIP_ALLOWED_HOSTNAMES` và đặt lại `PAPERCLIP_PUBLIC_URL` |
+| Xuất hiện thư mục `shop online` cạnh thư mục dự án | Do dòng mount `../../shop online:/workspace/shop-online` trong file Compose. Không dùng thì xoá dòng này |
 
-<a href="https://www.star-history.com/?repos=paperclipai%2Fpaperclip&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=paperclipai/paperclip&type=date&theme=dark&legend=top-left&sealed_token=hFjuwFq41bQD5cevvXVv5cTru2swWRZujwJYKlHhtBh6n0H5-VvJZW2SAlcQKB8u4KxhyEB9JqFg1yccJ8WLv9wPBcoWpWcak4gx0MYTWu_pOs2jKOaDluH7KsLeTKt6DHGkHiN3LsqV9s--MTDQcC6Xl7zV51W0-YezQXo-pVPgoFDFAGf2CY5fiP5Q" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=paperclipai/paperclip&type=date&legend=top-left&sealed_token=hFjuwFq41bQD5cevvXVv5cTru2swWRZujwJYKlHhtBh6n0H5-VvJZW2SAlcQKB8u4KxhyEB9JqFg1yccJ8WLv9wPBcoWpWcak4gx0MYTWu_pOs2jKOaDluH7KsLeTKt6DHGkHiN3LsqV9s--MTDQcC6Xl7zV51W0-YezQXo-pVPgoFDFAGf2CY5fiP5Q" />
-    <img src="https://api.star-history.com/chart?repos=paperclipai/paperclip&type=date&legend=top-left&sealed_token=hFjuwFq41bQD5cevvXVv5cTru2swWRZujwJYKlHhtBh6n0H5-VvJZW2SAlcQKB8u4KxhyEB9JqFg1yccJ8WLv9wPBcoWpWcak4gx0MYTWu_pOs2jKOaDluH7KsLeTKt6DHGkHiN3LsqV9s--MTDQcC6Xl7zV51W0-YezQXo-pVPgoFDFAGf2CY5fiP5Q" alt="Star History Chart" />
-  </picture>
-</a>
+## Cấu trúc thư mục
 
-<br/>
+```text
+House-Design/
+├── integrations/
+│   ├── studio-nha-3d/             ★ công ty AI của nhóm
+│   │   ├── agents/                hướng dẫn của 7 agent
+│   │   └── skills/
+│   │       ├── chon-kieu-nha/     phiếu hỏi của CEO
+│   │       ├── house-builder/     bộ dựng Python, render Blender, nội thất, nhà mẫu
+│   │       ├── kien-truc-nha-o/   schema, kích thước chuẩn, checklist
+│   │       ├── qa-acceptance/     skill nghiệm thu (từ Paperclip)
+│   │       └── task-planning/     skill lập kế hoạch (từ Paperclip)
+│   ├── agent-pixels/              ★ plugin Agent Office đã tuỳ chỉnh
+│   ├── telegram/                  ★ plugin Telegram đã tuỳ chỉnh
+│   └── workspace-plugins/         ★ build và khôi phục hai plugin
+├── server/                        máy chủ Paperclip, có phần bổ sung của nhóm
+├── ui/                            giao diện Paperclip, thêm trình xem 3D và Agent Stats
+├── packages/                      các gói dùng chung của Paperclip
+├── docker/                        cấu hình Docker Compose
+├── doc/, docs/                    tài liệu của Paperclip
+└── Dockerfile                     image gồm máy chủ, Blender và công ty mẫu
+```
 
----
+★ là thư mục nhóm thêm vào. Các thư mục còn lại thuộc nền tảng Paperclip.
 
-<p align="center">
-  <sub>Open source under MIT. Built for people who want to get work done, not babysit agents.</sub>
-</p>
+## Chạy thử bộ dựng nhà
+
+Bộ dựng chỉ cần Python 3, chạy được mà không cần Docker. Kiểm tra bộ dựng:
+
+```sh
+python integrations/studio-nha-3d/skills/house-builder/scripts/house_builder.py selftest
+```
+
+Dựng một căn nhà mẫu, kết quả nằm trong thư mục `ket-qua`:
+
+```sh
+python integrations/studio-nha-3d/skills/house-builder/scripts/house_builder.py build integrations/studio-nha-3d/skills/house-builder/examples/nha-pho-mai-thai.json --out ket-qua
+```
+
+Các mẫu khác nằm trong [`examples/`](integrations/studio-nha-3d/skills/house-builder/examples/).
+
+## Giới hạn hiện tại
+
+- Hình học chủ yếu dựng từ các khối đơn giản và thư viện nội thất có sẵn, nên chưa phù hợp với kiến trúc phức tạp.
+- Render bằng CPU nên mỗi ảnh mất vài phút.
+- Sản phẩm phục vụ lên ý tưởng và học tập, không thay thế hồ sơ thiết kế, tính toán kết cấu hay giấy phép xây dựng.
+- Chất lượng và tốc độ phụ thuộc vào mô hình AI và hạn mức tài khoản.
+
+## Giấy phép và ghi công
+
+Kho này giữ nguyên [giấy phép MIT](LICENSE) của Paperclip, © 2025 Paperclip AI.
+
+| Thành phần | Nguồn | Giấy phép |
+| --- | --- | --- |
+| Nền tảng | [Paperclip](https://github.com/paperclipai/paperclip) | MIT |
+| Plugin Agent Office | [tomartec/pixel-agent](https://github.com/tomartec/pixel-agent), bắt nguồn từ [gcampton/Agent-Pixels](https://github.com/gcampton/Agent-Pixels) | MIT |
+| Plugin Telegram | [paperclip-plugin-telegram](https://www.npmjs.com/package/paperclip-plugin-telegram) | MIT |
+| Mô hình nội thất | [Kenney Furniture Kit](https://kenney.nl) | CC0 |
+| Texture và bầu trời HDR | [Poly Haven](https://polyhaven.com) | CC0 |
+
+Cảm ơn nhóm Paperclip và các tác giả mã nguồn mở. Các thay đổi trong kho này do nhóm chịu trách nhiệm, vui lòng không báo lỗi của Studio Nhà 3D cho Paperclip.
