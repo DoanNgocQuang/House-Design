@@ -67,6 +67,7 @@ import { useRetryNowMutation } from "../../hooks/useRetryNowMutation";
 import { RetryErrorBand } from "../IssueScheduledRetryCard";
 import { StatusIcon } from "../StatusIcon";
 import { PriorityIcon } from "../PriorityIcon";
+import { StoryPointsSelect } from "../StoryPointsSelect";
 import { SHOW_TASK_PRIORITY_UI } from "../../lib/ui-flags";
 import { Identity } from "../Identity";
 import { ProjectTile } from "../ProjectTile";
@@ -2373,6 +2374,10 @@ export function IssueProperties({
             onChange={(status) => onUpdate({ status })}
             showLabel
           />
+        </PropertyRow>
+
+        <PropertyRow label="Story Points">
+          <StoryPointsSelect value={issue.storyPoints ?? null} onChange={(storyPoints) => onUpdate({ storyPoints })} />
         </PropertyRow>
 
         {/* PAP-411: priority UI is hidden behind SHOW_TASK_PRIORITY_UI. Revive by flipping the flag. */}

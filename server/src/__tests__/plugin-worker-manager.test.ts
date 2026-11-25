@@ -817,6 +817,32 @@ describe("plugin proactive company scope (LOOA-629)", () => {
     }
   });
 
+  it("lets a one-company plugin's job work while a delivered event is still open", async () => {
+    const { handle, stateGet, companiesGet } = makeHandle();
+    const runJob = (params: Record<string, unknown>) => handle.call("runJob", {
+      job: { jobKey: "poll", runId: "run-1", trigger: "schedule", scheduledAt: "2026-01-01T00:00:00.000Z" },
+      params: { mode: "echo", ...params },
+    } as unknown as HostToWorkerMethods["runJob"][0]);
+    const instanceState = { hostMethod: "state.get" };
+    const denied = { code: PLUGIN_RPC_ERROR_CODES.INVOCATION_SCOPE_DENIED };
+    try {
+      await handle.start();
+      // An event is a notification: nothing reports when its handler ends, so it stays open.
+      handle.notify("onEvent", { event: { eventType: "issue.updated", companyId: "company-1" } });
+      await expect(runJob(instanceState)).rejects.toMatchObject(denied);
+      handle.setProactiveCompanyScopes(["company-1"]);
+      await expect(runJob(instanceState)).resolves.toMatchObject({ value: "ok" });
+      await expect(runJob({ hostMethod: "companies.get", requestedCompanyId: "company-2" })).rejects.toMatchObject(denied);
+      // With several companies the job's own company is unknown, so nothing is assumed.
+      handle.setProactiveCompanyScopes(["company-1", "company-2"]);
+      await expect(runJob(instanceState)).rejects.toMatchObject(denied);
+      expect(stateGet).toHaveBeenCalledTimes(1);
+      expect(companiesGet).not.toHaveBeenCalled();
+    } finally {
+      await handle.stop().catch(() => undefined);
+    }
+  });
+
   it("admits a proactive state.get (scopeKind company) for an authorized company", async () => {
     const { handle, stateGet } = makeHandle();
     try {

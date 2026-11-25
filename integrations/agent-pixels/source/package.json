@@ -1,0 +1,22 @@
+{
+  "name": "@tomartec/pixel-agent",
+  "version": "2026.807.2",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomartec/pixel-agent.git"
+  },
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js",
+    "ui": "./dist/ui/"
+  },
+  "dependencies": {
+    "@paperclipai/plugin-sdk": "^2026.722.0",
+    "@paperclipai/shared": "^2026.722.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  }
+}

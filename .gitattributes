@@ -1,1 +1,8 @@
-patches/*.patch whitespace=-space-before-tab
+# CRLF in a patch lands in the patched package, so runner providers fail their digest check.
+patches/*.patch whitespace=-space-before-tab text eol=lf
+
+# Pinned skill hashes require the LF bytes used in the Linux runtime.
+packages/skills-catalog/catalog/** text eol=lf
+
+# Container entrypoints run on Linux; CRLF breaks the shebang.
+*.sh text eol=lf

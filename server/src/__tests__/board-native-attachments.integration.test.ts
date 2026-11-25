@@ -34,6 +34,7 @@ import { stageNativeRunnerWakeAttachments } from "../services/native-runtime/nat
 import { issueRoutes } from "../routes/issues.js";
 import { errorHandler } from "../middleware/index.js";
 import { issueService } from "../services/issues.js";
+import { setPluginEventBus } from "../services/activity-log.js";
 
 const wakeup = vi.hoisted(() =>
   vi.fn(
@@ -259,6 +260,60 @@ describe("Board upload receipt to native wake staging", () => {
       }
     },
   );
+
+  it("tells plugins when a question card is created and when it changes", async () => {
+    const emit = vi.fn(async (_event: { eventType: string; entityId?: string; payload: unknown }) => ({ errors: [] }));
+    setPluginEventBus({ emit } as never);
+    const created = await request(app).post(`/api/issues/${issueId}/interactions`).send({
+      kind: "request_confirmation", title: "Approve", continuationPolicy: "none", payload: { version: 1, prompt: "Approve?" },
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const rejected = await request(app).post(`/api/issues/${issueId}/interactions/${created.body.id}/reject`).send({ reason: "No" });
+    expect(rejected.status, JSON.stringify(rejected.body)).toBe(200);
+    const cards = emit.mock.calls.map(([event]) => event).filter((event) => event.eventType.startsWith("issue.interaction."));
+    expect(cards).toEqual([
+      expect.objectContaining({ eventType: "issue.interaction.created", entityId: issueId, payload: expect.objectContaining({ interactionId: created.body.id }) }),
+      expect.objectContaining({ eventType: "issue.interaction.updated", entityId: issueId, payload: expect.objectContaining({ interactionId: created.body.id }) }),
+    ]);
+  });
+
+  it("overwrites an agent's same-named task file in place and leaves other files alone", async () => {
+    const register = async (body: string, createdByAgentId: string | null, filename = "plan.svg") => {
+      const stored = await storage.putFile({
+        companyId, namespace: `issues/${issueId}`, originalFilename: filename, contentType: "image/svg+xml", body: Buffer.from(body),
+      });
+      const row = await issueService(db).createAttachment({
+        issueId, ...stored, createdByAgentId, createdByUserId: createdByAgentId ? null : "local-board", replaceSameName: true,
+      });
+      return { row, stored };
+    };
+    const pasted = await register("owner", null, "image.png");
+    const first = await register("old", agentId);
+    const second = await register("new", otherAgentId);
+    expect(second.row.id).toBe(first.row.id);
+    expect(second.row.replaced?.objectKey).toBe(first.stored.objectKey);
+
+    // An owner's own file is never overwritten, not even by an agent.
+    expect((await register("agent", agentId, "image.png")).row.id).not.toBe(pasted.row.id);
+
+    // Over HTTP the owner may overwrite an agent's file; the old bytes are removed.
+    const { attachment, bytes } = await upload("plan.svg");
+    expect(attachment.id).toBe(first.row.id);
+    const content = await request(app).get(attachment.contentPath).buffer(true).parse((res, done) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk)).on("end", () => done(null, Buffer.concat(chunks)));
+    });
+    expect(content.body).toEqual(bytes);
+    expect((await storage.headObject(companyId, second.stored.objectKey)).exists).toBe(false);
+    const names = (await issueService(db).listAttachments(issueId)).map((file) => file.originalFilename).sort();
+    expect(names).toEqual(["image.png", "image.png", "plan.svg"]);
+
+    // A file the agent sent with a comment is overwritten too and stays with that comment.
+    const [comment] = await db.insert(issueComments).values({ companyId, issueId, authorAgentId: agentId, authorType: "agent", body: "Done" }).returning();
+    await db.update(issueAttachments).set({ issueCommentId: comment!.id }).where(eq(issueAttachments.id, first.row.id));
+    const third = await register("newer", agentId);
+    expect([third.row.id, third.row.issueCommentId]).toEqual([first.row.id, comment!.id]);
+  });
 
   it("does not bind or stage an old attachment merely referenced in Markdown", async () => {
     const { attachment } = await upload();

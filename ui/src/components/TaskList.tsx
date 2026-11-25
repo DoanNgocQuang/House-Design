@@ -9,9 +9,9 @@ import { sortIssues } from "../lib/issue-sort";
 import { timeAgo } from "../lib/timeAgo";
 import { IssueRow, type IssueRowDensity } from "./IssueRow";
 import { IssueGroupHeader } from "./IssueGroupHeader";
+import { PriorityIcon } from "./PriorityIcon";
 import { TaskListColumnHeader, TaskListColumnSettings, TaskListViewport } from "./TaskListColumns";
 import { TaskRowGroup } from "./TaskRowGroup";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { useTaskRowBudget } from "../hooks/useTaskRowBudget";
 import { AgentAvatar, type AvatarAgent } from "./AgentAvatar";
@@ -142,6 +142,8 @@ export function TaskList({ items, allItems = items, initialColumns = defaultTask
           ) : undefined}
           columnValues={{
             createdBy: item.createdBy,
+            priority: <PriorityIcon priority={issue.priority} showLabel />,
+            storyPoints: issue.storyPoints ?? "—",
             assignee: assigneeName,
             assigneeAvatar: issue.assigneeAgentId ? (
               <AgentAvatar agent={item.assigneeAgent ?? { id: issue.assigneeAgentId, name: assigneeName }} size={20} />
@@ -153,7 +155,6 @@ export function TaskList({ items, allItems = items, initialColumns = defaultTask
             ) : null,
             project: issue.project?.name,
             parentTask: parent ? <span><span className="font-mono">{parent.identifier}</span> {parent.title}</span> : undefined,
-            tags: issue.labels?.length ? <span className="inline-flex items-center gap-1">{issue.labels.map(label => <Badge key={label.id} variant="secondary" className="shrink-0 px-1.5 py-0">{label.name}</Badge>)}</span> : undefined,
             worktree: branch ? <span className="inline-flex items-center gap-1.5"><GitBranch className="size-3 shrink-0" aria-hidden />{branch}</span> : undefined,
             lastUpdated: timeAgo(issue.updatedAt),
           }}

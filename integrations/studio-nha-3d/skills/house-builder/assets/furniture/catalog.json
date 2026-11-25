@@ -1,0 +1,421 @@
+{
+  "_ghi_chu": "w = bề rộng thật (m). h = chiều cao thật nếu cần kéo giãn theo chiều cao. z = cao độ đặt (m) cho đồ treo hoặc đặt lên đồ khác. stack = true: không kiểm tra chồng lấn và chắn cửa (thảm, tivi, tủ treo). Chiều sâu tính theo tỉ lệ file OBJ. Mô hình: Kenney Furniture Kit (CC0). tones = màu riêng của món theo tên vật liệu trong OBJ (wood, carpet...), đè lên bảng màu chung FURNITURE_TONES.",
+  "giuong-doi": {
+    "name": "Giường đôi",
+    "obj": "bedDouble.obj",
+    "w": 1.6,
+    "rooms": [
+      "bedroom"
+    ],
+    "tones": {
+      "wood": "#8a6242",
+      "carpet": "#6f8398"
+    }
+  },
+  "giuong-don": {
+    "name": "Giường đơn",
+    "obj": "bedSingle.obj",
+    "w": 0.9,
+    "rooms": [
+      "bedroom"
+    ],
+    "tones": {
+      "wood": "#c9a77c",
+      "carpet": "#c98f7a"
+    }
+  },
+  "tu-dau-giuong": {
+    "name": "Tủ đầu giường",
+    "obj": "cabinetBedDrawerTable.obj",
+    "w": 0.45,
+    "rooms": [
+      "bedroom"
+    ],
+    "tones": {
+      "wood": "#8a6242"
+    }
+  },
+  "tu-quan-ao": {
+    "name": "Tủ quần áo",
+    "obj": "bookcaseClosedDoors.obj",
+    "w": 1.0,
+    "h": 2.0,
+    "rooms": [
+      "bedroom",
+      "storage"
+    ],
+    "tones": {
+      "wood": "#d9cbb5"
+    }
+  },
+  "sofa-3": {
+    "name": "Sofa 3 chỗ",
+    "obj": "loungeSofa.obj",
+    "w": 2.0,
+    "rooms": [
+      "living"
+    ],
+    "tones": {
+      "carpet": "#5f7481",
+      "wood": "#5a4030"
+    }
+  },
+  "sofa-dai": {
+    "name": "Sofa chữ L",
+    "obj": "loungeSofaLong.obj",
+    "w": 2.6,
+    "rooms": [
+      "living"
+    ],
+    "tones": {
+      "carpet": "#a89c8a",
+      "wood": "#5a4030"
+    }
+  },
+  "ghe-thu-gian": {
+    "name": "Ghế thư giãn",
+    "obj": "loungeChair.obj",
+    "w": 0.9,
+    "rooms": [
+      "living",
+      "bedroom",
+      "balcony",
+      "hall",
+      "porch"
+    ],
+    "tones": {
+      "carpet": "#b5713f",
+      "wood": "#5a4030"
+    }
+  },
+  "ban-tra": {
+    "name": "Bàn trà",
+    "obj": "tableCoffee.obj",
+    "w": 1.1,
+    "rooms": [
+      "living",
+      "balcony",
+      "porch"
+    ],
+    "tones": {
+      "wood": "#7a5236"
+    }
+  },
+  "ke-tivi": {
+    "name": "Kệ tivi",
+    "obj": "cabinetTelevision.obj",
+    "w": 1.6,
+    "rooms": [
+      "living",
+      "bedroom",
+      "dining"
+    ],
+    "tones": {
+      "wood": "#9c7650"
+    }
+  },
+  "tivi": {
+    "name": "Tivi",
+    "obj": "televisionModern.obj",
+    "w": 1.2,
+    "z": 0.62,
+    "stack": true,
+    "rooms": [
+      "living",
+      "bedroom"
+    ]
+  },
+  "ban-an": {
+    "name": "Bàn ăn",
+    "obj": "table.obj",
+    "w": 1.4,
+    "h": 0.75,
+    "rooms": [
+      "kitchen",
+      "dining"
+    ],
+    "tones": {
+      "wood": "#94653f"
+    }
+  },
+  "ghe": {
+    "name": "Ghế ăn",
+    "obj": "chair.obj",
+    "w": 0.45,
+    "h": 0.9,
+    "rooms": [
+      "kitchen",
+      "dining"
+    ],
+    "tones": {
+      "wood": "#6f4d36"
+    }
+  },
+  "tu-bep": {
+    "name": "Tủ bếp dưới",
+    "obj": "kitchenCabinet.obj",
+    "w": 0.6,
+    "h": 0.85,
+    "rooms": [
+      "kitchen"
+    ],
+    "tones": {
+      "wood": "#e9e4da",
+      "woodDark": "#8f7a63"
+    }
+  },
+  "tu-bep-ngan-keo": {
+    "name": "Tủ bếp ngăn kéo",
+    "obj": "kitchenCabinetDrawer.obj",
+    "w": 0.6,
+    "h": 0.85,
+    "rooms": [
+      "kitchen"
+    ],
+    "tones": {
+      "wood": "#e9e4da",
+      "woodDark": "#8f7a63"
+    }
+  },
+  "tu-bep-tren": {
+    "name": "Tủ bếp treo",
+    "obj": "kitchenCabinetUpper.obj",
+    "w": 0.6,
+    "h": 0.7,
+    "z": 1.5,
+    "stack": true,
+    "rooms": [
+      "kitchen"
+    ],
+    "tones": {
+      "wood": "#8fa08c",
+      "woodDark": "#6f7f6c"
+    }
+  },
+  "bep-nau": {
+    "name": "Bếp nấu",
+    "obj": "kitchenStove.obj",
+    "w": 0.6,
+    "h": 0.85,
+    "rooms": [
+      "kitchen"
+    ],
+    "tones": {
+      "wood": "#e9e4da"
+    }
+  },
+  "bon-rua-bat": {
+    "name": "Bồn rửa bát",
+    "obj": "kitchenSink.obj",
+    "w": 0.6,
+    "h": 0.85,
+    "rooms": [
+      "kitchen",
+      "laundry"
+    ],
+    "tones": {
+      "wood": "#e9e4da",
+      "woodDark": "#8f7a63"
+    }
+  },
+  "tu-lanh": {
+    "name": "Tủ lạnh",
+    "obj": "kitchenFridgeLarge.obj",
+    "w": 0.7,
+    "h": 1.8,
+    "rooms": [
+      "kitchen"
+    ]
+  },
+  "lo-vi-song": {
+    "name": "Lò vi sóng",
+    "obj": "kitchenMicrowave.obj",
+    "w": 0.5,
+    "z": 0.85,
+    "stack": true,
+    "rooms": [
+      "kitchen"
+    ]
+  },
+  "bon-cau": {
+    "name": "Bồn cầu",
+    "obj": "toilet.obj",
+    "w": 0.4,
+    "rooms": [
+      "wc"
+    ]
+  },
+  "lavabo": {
+    "name": "Lavabo",
+    "obj": "bathroomSinkSquare.obj",
+    "w": 0.5,
+    "rooms": [
+      "wc"
+    ]
+  },
+  "tu-lavabo": {
+    "name": "Tủ lavabo",
+    "obj": "bathroomCabinetDrawer.obj",
+    "w": 0.6,
+    "h": 0.85,
+    "rooms": [
+      "wc"
+    ],
+    "tones": {
+      "wood": "#a67c52"
+    }
+  },
+  "guong": {
+    "name": "Gương",
+    "obj": "bathroomMirror.obj",
+    "w": 0.6,
+    "z": 1.2,
+    "stack": true,
+    "rooms": [
+      "wc",
+      "hall",
+      "bedroom",
+      "storage"
+    ],
+    "tones": {
+      "wood": "#8d6b4b",
+      "glass": "#cfe0e4"
+    }
+  },
+  "voi-sen": {
+    "name": "Buồng tắm vòi sen",
+    "obj": "shower.obj",
+    "w": 0.9,
+    "rooms": [
+      "wc"
+    ]
+  },
+  "bon-tam": {
+    "name": "Bồn tắm",
+    "obj": "bathtub.obj",
+    "w": 1.6,
+    "rooms": [
+      "wc"
+    ]
+  },
+  "may-giat": {
+    "name": "Máy giặt",
+    "obj": "washer.obj",
+    "w": 0.6,
+    "h": 0.85,
+    "rooms": [
+      "wc",
+      "laundry",
+      "balcony"
+    ]
+  },
+  "ban-lam-viec": {
+    "name": "Bàn làm việc",
+    "obj": "desk.obj",
+    "w": 1.2,
+    "rooms": [
+      "bedroom",
+      "other"
+    ],
+    "tones": {
+      "wood": "#b08a5f"
+    }
+  },
+  "ghe-lam-viec": {
+    "name": "Ghế làm việc",
+    "obj": "chairDesk.obj",
+    "w": 0.5,
+    "rooms": [
+      "bedroom",
+      "other"
+    ],
+    "tones": {
+      "carpet": "#3f4a55"
+    }
+  },
+  "ke-sach": {
+    "name": "Kệ sách",
+    "obj": "bookcaseOpen.obj",
+    "w": 0.8,
+    "h": 1.8,
+    "rooms": [
+      "living",
+      "bedroom",
+      "other",
+      "storage",
+      "laundry",
+      "worship"
+    ],
+    "tones": {
+      "wood": "#a87f55"
+    }
+  },
+  "cay-canh": {
+    "name": "Cây cảnh",
+    "obj": "pottedPlant.obj",
+    "w": 0.4,
+    "rooms": [
+      "living",
+      "hall",
+      "balcony",
+      "bedroom",
+      "worship",
+      "dining",
+      "laundry",
+      "porch",
+      "wc"
+    ],
+    "tones": {
+      "wood": "#b5643c",
+      "woodDark": "#4a3527"
+    }
+  },
+  "tham": {
+    "name": "Thảm",
+    "obj": "rugRectangle.obj",
+    "w": 2.0,
+    "stack": true,
+    "rooms": [
+      "living",
+      "bedroom",
+      "hall"
+    ],
+    "tones": {
+      "carpet": "#cfc3ae",
+      "carpetDarker": "#9c8f7c"
+    }
+  },
+  "den-cay": {
+    "name": "Đèn cây",
+    "obj": "lampRoundFloor.obj",
+    "w": 0.35,
+    "rooms": [
+      "living",
+      "bedroom",
+      "hall"
+    ]
+  },
+  "ban-tho": {
+    "name": "Bàn thờ",
+    "obj": "sideTableDrawers.obj",
+    "w": 1.2,
+    "h": 1.1,
+    "rooms": [
+      "worship"
+    ],
+    "tones": {
+      "wood": "#6a3b22"
+    }
+  },
+  "xe-oto": {
+    "name": "Xe ô tô",
+    "obj": "xe-oto.obj",
+    "w": 1.84,
+    "rooms": [
+      "garage"
+    ],
+    "tones": {
+      "glass": "#293847"
+    }
+  }
+}

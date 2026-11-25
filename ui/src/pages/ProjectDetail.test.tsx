@@ -36,6 +36,7 @@ const mockNavigate = vi.hoisted(() => vi.fn());
 const mockParams = vi.hoisted(() => ({ projectId: "project-1" }));
 const mockSetBreadcrumbs = vi.hoisted(() => vi.fn());
 const mockIssuesList = vi.hoisted(() => vi.fn());
+const coordinator = vi.hoisted(() => ({ enabled: false, render: vi.fn() }));
 const mockSummarySlotCard = vi.hoisted(() => vi.fn());
 const mockLocation = vi.hoisted(() => ({
   pathname: "/projects/project-1/plugin-operations",
@@ -110,6 +111,8 @@ vi.mock("../components/PageTabBar", () => ({
     <div>{items.map((item) => <button key={item.value}>{item.label}</button>)}</div>
   ),
 }));
+vi.mock("../hooks/useCoordinatorWorkspaceEnabled", () => ({ useCoordinatorWorkspaceEnabled: () => ({ enabled: coordinator.enabled }) }));
+vi.mock("./CoordinatorTasks", () => ({ CoordinatorTasks: (props: unknown) => { coordinator.render(props); return <div data-testid="shared-task-table" />; } }));
 vi.mock("../components/IssuesList", () => ({
   IssuesList: (props: unknown) => {
     mockIssuesList(props);
@@ -263,6 +266,24 @@ describe("ProjectDetail", () => {
     expect(mockProjectsApi.update).toHaveBeenCalledWith("project-1", { visibility: "open" }, "company-1");
     expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true);
     queryClient.clear();
+  });
+
+  it("mounts the shared task table for the current project in the main workspace", async () => {
+    coordinator.enabled = true;
+    mockLocation.pathname = "/projects/project-1/issues";
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    root = createRoot(container);
+    try {
+      await act(() => root!.render(<QueryClientProvider client={client}><ProjectDetail /></QueryClientProvider>));
+      await vi.waitFor(() => expect(container.querySelector('[data-testid="shared-task-table"]')).not.toBeNull());
+      expect(coordinator.render).toHaveBeenCalledWith(expect.objectContaining({
+        project: expect.objectContaining({ id: "project-1", companyId: "company-1" }),
+      }));
+      expect(container.querySelector('[data-testid="issues-list"]')).toBeNull();
+    } finally {
+      coordinator.enabled = false;
+      client.clear();
+    }
   });
 
   it.each(["issues", "plugin-operations"])("removes cached %s after a real task-list denial", async tab => {

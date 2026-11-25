@@ -7,6 +7,7 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IssueAttachmentsSection } from "./IssueAttachmentsSection";
+import { TextAttachmentContext } from "@/context/TextAttachmentContext";
 
 vi.mock("./MarkdownBody", () => ({
   MarkdownBody: ({ children, className }: { children: string; className?: string }) => (
@@ -304,6 +305,34 @@ describe("IssueAttachmentsSection", () => {
     expect(container.querySelector('a[aria-label="Download report.pdf"]')?.getAttribute("href")).toBe(
       "/api/attachments/pdf-attachment/content?download=1",
     );
+  });
+
+  it("opens .glb 3D models in the task panel instead of following the download link", async () => {
+    const openInPanel = vi.fn();
+    const attachment = makeAttachment({
+      id: "glb-attachment",
+      originalFilename: "model.glb",
+      contentType: "model/gltf-binary",
+      contentPath: "/api/attachments/glb-attachment/content",
+    });
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <TextAttachmentContext.Provider value={openInPanel}>
+            <IssueAttachmentsSection attachments={[attachment]} onDelete={vi.fn()} onImageClick={vi.fn()} />
+          </TextAttachmentContext.Provider>
+        </QueryClientProvider>,
+      );
+    });
+    await flushReact();
+
+    const open = container.querySelector<HTMLAnchorElement>('a[aria-label="Open model.glb"]');
+    expect(open).not.toBeNull();
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    await act(async () => { open!.dispatchEvent(click); });
+    expect(openInPanel).toHaveBeenCalledWith("glb-attachment", "model.glb");
+    expect(click.defaultPrevented).toBe(true);
   });
 
   it("can render read-only attachments without destructive controls", async () => {

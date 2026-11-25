@@ -15,7 +15,7 @@ import type { ComponentProps } from "react";
 import type { TaskListSort } from "@/lib/task-list";
 import { taskListViews, taskListViewStorageKey, type TaskListView } from "@/lib/task-list-views";
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn(), attention: vi.fn(), breadcrumbs: vi.fn(), liveRuns: vi.fn(), localTrusted: false, realFilters: false, labels: [] as { id: string; name: string; color: string }[], identity: { userId: "person" as string | null, settled: true } }));
+const mocks = vi.hoisted(() => ({ newIssue: vi.fn(), list: vi.fn(), get: vi.fn(), attention: vi.fn(), breadcrumbs: vi.fn(), liveRuns: vi.fn(), localTrusted: false, realFilters: false, labels: [] as { id: string; name: string; color: string }[], identity: { userId: "person" as string | null, settled: true } }));
 vi.mock("@/api/heartbeats", () => ({ heartbeatsApi: { liveRunsForCompany: mocks.liveRuns } }));
 vi.mock("@/api/issues", () => ({ issuesApi: { list: mocks.list, listCompact: mocks.list, get: mocks.get, listLabels: async () => mocks.labels, update: vi.fn() } }));
 vi.mock("@/api/attention", () => ({ attentionApi: { taskIndex: mocks.attention } }));
@@ -27,11 +27,12 @@ vi.mock("@/hooks/useCoordinatorWorkspaceEnabled", () => ({ useCoordinatorWorkspa
 vi.mock("@/hooks/useStreamlinedUiEnabled", () => ({ useStreamlinedUiEnabled: () => ({ enabled: true }) }));
 vi.mock("@/hooks/useCombinedInboxTasksEnabled", () => ({ useCombinedInboxTasksEnabled: () => ({ enabled: false }) }));
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: "company" }) }));
-vi.mock("@/context/DialogContext", () => ({ useDialogActions: () => ({ openNewIssue: vi.fn() }) }));
+vi.mock("@/context/DialogContext", () => ({ useDialogActions: () => ({ openNewIssue: mocks.newIssue }) }));
 vi.mock("@/context/BreadcrumbContext", () => ({ useBreadcrumbs: () => ({ setBreadcrumbs: mocks.breadcrumbs }) }));
-vi.mock("@/components/TaskListToolbar", () => ({ TaskListToolbar: ({ filters, view, onViewChange, onLayoutChange }: { filters: Omit<ComponentProps<typeof IssueFilterPanel>, "onClear">; view: TaskListView; onViewChange: (view: TaskListView) => void; onLayoutChange: (layout: "list" | "board") => void }) => <>
+vi.mock("@/components/TaskListToolbar", () => ({ TaskListToolbar: ({ filters, view, onViewChange, onLayoutChange, onNewTask }: { onNewTask: () => void; filters: Omit<ComponentProps<typeof IssueFilterPanel>, "onClear">; view: TaskListView; onViewChange: (view: TaskListView) => void; onLayoutChange: (layout: "list" | "board") => void }) => <>
   {mocks.realFilters ? <IssueFilterPanel {...filters} onClear={() => filters.onChange({ labels: [] })} /> : null}
   <span data-selected-view>{view}</span>
+  <button onClick={onNewTask}>New Task</button>
   {taskListViews.map(option => <button key={option.value} onClick={() => onViewChange(option.value)}>{option.label}</button>)}
   <button onClick={() => filters.onChange({ routineTasksOnly: true })}>Routine tasks</button>
   <button onClick={() => filters.onChange({ routineTasksOnly: false })}>Show other tasks</button>
@@ -65,10 +66,25 @@ describe("Coordinator tasks using the proposed table", () => {
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   });
   afterEach(() => { flushSync(() => root.unmount()); client.clear(); host.remove(); vi.unstubAllGlobals(); });
-  async function mount(url: string) {
-    flushSync(() => root.render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><CoordinatorTasks /></MemoryRouter></QueryClientProvider>));
+  async function mount(url: string, project?: {id: string; name: string; companyId: string}) {
+    flushSync(() => root.render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><CoordinatorTasks project={project} /></MemoryRouter></QueryClientProvider>));
     await vi.waitFor(() => expect(host.textContent).not.toContain("Loading tasks"));
   }
+  it("scopes the shared task table and new tasks to the project", async () => {
+    const project = { id: "project-one", name: "Website", companyId: "company" };
+    mocks.list.mockResolvedValue([
+      createIssue({ id: "child", companyId: "company", projectId: project.id }),
+      createIssue({ id: "other", companyId: "company", projectId: "project-two" }),
+    ]);
+    await mount("/projects/website/tasks?q=child", project);
+    expect(mocks.list).toHaveBeenCalledWith("company", expect.objectContaining({ projectId: project.id, q: "child" }), expect.any(Object));
+    expect(host.querySelector('[data-task-id="child"]')).not.toBeNull();
+    expect(host.querySelector('[data-task-id="other"]')).toBeNull();
+    expect(mocks.breadcrumbs).not.toHaveBeenCalled();
+    [...host.querySelectorAll("button")].find(button => button.textContent === "New Task")!.click();
+    expect(mocks.newIssue).toHaveBeenCalledWith({ projectId: project.id });
+  });
+
   it.each([
     { url: "/issues", view: "all", ids: ["parent", "mine", "assigned", "unrelated"] },
     { url: "/issues?view=inbox", view: "inbox", ids: ["parent", "mine", "assigned"] },

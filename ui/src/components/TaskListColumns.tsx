@@ -99,7 +99,7 @@ function SortableColumnHeader({ id, label, start, sort, onSortChange, onColumnOr
           aria-label={onSortChange ? `${label}: sort ${direction}` : label}
           aria-describedby={onColumnOrderChange ? helpId : undefined}
           aria-keyshortcuts={onColumnOrderChange ? "Alt+ArrowLeft Alt+ArrowRight" : undefined}
-          onClick={() => onSortChange?.({ column: id, direction })}
+          onClick={() => { if (id !== "storyPoints") onSortChange?.({ column: id, direction }); }}
           onKeyDown={event => {
             if (!onColumnOrderChange || !event.altKey || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
             event.preventDefault();
@@ -136,7 +136,7 @@ export function TaskListColumnHeader({ sort, onSortChange, onColumnOrderChange }
       <SortableContext items={[...columns]} strategy={horizontalListSortingStrategy}>
         <div role="row" data-slot="task-list-column-header" className="task-list-column-header">
           {!columns.includes("task") ? <span role="columnheader" aria-label="Task hierarchy" /> : null}
-          {columns.map(id => <SortableColumnHeader key={id} id={id} label={taskListColumns.find(column => column.id === id)!.label} start={taskListColumnStart(columns, id)} sort={sort} onSortChange={onSortChange} onColumnOrderChange={onColumnOrderChange} helpId={helpId} />)}
+          {columns.map(id => <SortableColumnHeader key={id} id={id} label={taskListColumns.find(column => column.id === id)!.label} start={taskListColumnStart(columns, id)} sort={sort} onSortChange={id === "storyPoints" ? undefined : onSortChange} onColumnOrderChange={onColumnOrderChange} helpId={helpId} />)}
         </div>
       </SortableContext>
     </DndContext>
@@ -184,9 +184,9 @@ export function TaskRowColumnCells({ identifier, values }: { identifier: string;
   return (
     <span data-slot="task-row-columns" className="task-row-columns">
       {columns.filter(id => id !== "task").map(id => (
-        <span key={id} role="cell" data-column={id} data-marquee-cell={id} className="task-row-column" style={{ gridColumn: taskListColumnStart(columns, id) }}>
+        <span key={id} role="cell" data-column={id} data-marquee-cell={id} className="task-row-column" data-task-column-filled={id === "taskId" || (id === "assignee" && values.assigneeAvatar) || (["priority", "storyPoints", "parentTask"].includes(id) && values[id] != null && values[id] !== "—") ? "" : undefined} data-mobile-label={taskListColumns.find(column => column.id === id)?.label} style={{ gridColumn: taskListColumnStart(columns, id) }}>
           {id === "assignee" && values.assigneeAvatar ? (
-            <span className="flex min-w-0 items-center gap-1.5">
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted px-2 py-0.5">
               {values.assigneeAvatar}
               <CellMarquee cell={id}>{values.assignee ?? "—"}</CellMarquee>
             </span>

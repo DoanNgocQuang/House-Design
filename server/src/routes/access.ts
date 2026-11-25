@@ -2644,6 +2644,8 @@ export function accessRoutes(
     cliAuthCreateRateLimiter?: InviteRateLimiter;
     cliAuthPollRateLimiter?: InviteRateLimiter;
     authPublicBaseUrl?: string;
+    /** Runs (not awaited) once the first instance admin is claimed. */
+    onFirstAdminClaimed?: (userId: string) => void;
   }
 ) {
   const router = Router();
@@ -2781,6 +2783,7 @@ export function accessRoutes(
     if (claimed.status === "already_claimed") {
       throw conflict("Someone else has already claimed this instance");
     }
+    opts.onFirstAdminClaimed?.(claimed.userId);
 
     res.json({ claimed: true, userId: claimed.userId });
   });
@@ -3677,6 +3680,7 @@ export function accessRoutes(
         if (claimed.status === "already_claimed") {
           throw conflict("Someone else has already claimed this instance");
         }
+        opts.onFirstAdminClaimed?.(claimed.userId);
         const updatedInvite = claimed.value ?? invite;
         res.status(202).json({
           inviteId: updatedInvite.id,

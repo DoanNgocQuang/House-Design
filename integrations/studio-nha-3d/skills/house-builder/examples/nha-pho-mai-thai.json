@@ -1,0 +1,798 @@
+{
+  "name": "Nhà phố 2 tầng mái Thái",
+  "lot": {
+    "width": 5,
+    "depth": 20
+  },
+  "floor_height": 3.4,
+  "roof": {
+    "type": "hip",
+    "pitch_deg": 35,
+    "overhang": 0.4
+  },
+  "floors": [
+    {
+      "rooms": [
+        {
+          "id": "gara",
+          "name": "Gara",
+          "type": "garage",
+          "x": 0,
+          "y": 0,
+          "w": 5,
+          "d": 5.5
+        },
+        {
+          "id": "khach",
+          "name": "Phòng khách",
+          "type": "living",
+          "x": 0,
+          "y": 5.5,
+          "w": 3.8,
+          "d": 5
+        },
+        {
+          "id": "thang1",
+          "name": "Cầu thang",
+          "type": "stairs",
+          "x": 3.8,
+          "y": 5.5,
+          "w": 1.2,
+          "d": 5
+        },
+        {
+          "id": "bep",
+          "name": "Bếp + ăn",
+          "type": "kitchen",
+          "x": 0,
+          "y": 10.5,
+          "w": 5,
+          "d": 5
+        },
+        {
+          "id": "wc1",
+          "name": "WC",
+          "type": "wc",
+          "x": 0,
+          "y": 15.5,
+          "w": 2,
+          "d": 2
+        },
+        {
+          "id": "sau",
+          "name": "Sân sau",
+          "type": "balcony",
+          "x": 2,
+          "y": 15.5,
+          "w": 3,
+          "d": 2
+        }
+      ],
+      "openings": [
+        {
+          "room": "gara",
+          "side": "front",
+          "offset": 0.8,
+          "width": 3.2,
+          "kind": "door",
+          "head": 2.6
+        },
+        {
+          "room": "gara",
+          "side": "back",
+          "offset": 1.2,
+          "width": 1.0
+        },
+        {
+          "room": "khach",
+          "side": "left",
+          "offset": 1.5,
+          "width": 1.6,
+          "kind": "window"
+        },
+        {
+          "room": "khach",
+          "side": "back",
+          "offset": 1.4,
+          "width": 1.0
+        },
+        {
+          "room": "bep",
+          "side": "back",
+          "offset": 0.4,
+          "width": 0.8
+        },
+        {
+          "room": "bep",
+          "side": "back",
+          "offset": 2.8,
+          "width": 1.0
+        },
+        {
+          "room": "bep",
+          "side": "left",
+          "offset": 1.5,
+          "width": 1.4,
+          "kind": "window"
+        }
+      ],
+      "furniture": [
+        {
+          "id": "xe-oto",
+          "item": "xe-oto",
+          "room": "gara",
+          "x": 3.79,
+          "y": 3.096,
+          "rotation": 0
+        },
+        {
+          "id": "sofa-3",
+          "item": "sofa-3",
+          "room": "khach",
+          "x": 3.292,
+          "y": 8.0,
+          "rotation": 270
+        },
+        {
+          "id": "ke-tivi",
+          "item": "ke-tivi",
+          "room": "khach",
+          "x": 0.34,
+          "y": 8.0,
+          "rotation": 90
+        },
+        {
+          "id": "tivi",
+          "item": "tivi",
+          "room": "khach",
+          "x": 0.34,
+          "y": 8.0,
+          "rotation": 90
+        },
+        {
+          "id": "ban-tra",
+          "item": "ban-tra",
+          "room": "khach",
+          "x": 2.12,
+          "y": 8.0,
+          "rotation": 270
+        },
+        {
+          "id": "tham",
+          "item": "tham",
+          "room": "khach",
+          "x": 2.12,
+          "y": 8.0,
+          "rotation": 90
+        },
+        {
+          "id": "cay-canh",
+          "item": "cay-canh",
+          "room": "khach",
+          "x": 0.29,
+          "y": 5.817,
+          "rotation": 180
+        },
+        {
+          "id": "cay-canh-2",
+          "item": "cay-canh",
+          "room": "khach",
+          "x": 3.51,
+          "y": 5.817,
+          "rotation": 180
+        },
+        {
+          "id": "den-cay",
+          "item": "den-cay",
+          "room": "khach",
+          "x": 0.265,
+          "y": 10.208,
+          "rotation": 0
+        },
+        {
+          "id": "ke-sach",
+          "item": "ke-sach",
+          "room": "khach",
+          "x": 3.46,
+          "y": 6.5,
+          "rotation": 270
+        },
+        {
+          "id": "tu-lanh",
+          "item": "tu-lanh",
+          "room": "bep",
+          "x": 4.637,
+          "y": 10.94,
+          "rotation": 270
+        },
+        {
+          "id": "tu-bep",
+          "item": "tu-bep",
+          "room": "bep",
+          "x": 4.596,
+          "y": 11.59,
+          "rotation": 270
+        },
+        {
+          "id": "bon-rua-bat",
+          "item": "bon-rua-bat",
+          "room": "bep",
+          "x": 4.596,
+          "y": 12.19,
+          "rotation": 270
+        },
+        {
+          "id": "tu-bep-ngan-keo",
+          "item": "tu-bep-ngan-keo",
+          "room": "bep",
+          "x": 4.596,
+          "y": 12.79,
+          "rotation": 270
+        },
+        {
+          "id": "bep-nau",
+          "item": "bep-nau",
+          "room": "bep",
+          "x": 4.596,
+          "y": 13.39,
+          "rotation": 270
+        },
+        {
+          "id": "tu-bep-2",
+          "item": "tu-bep",
+          "room": "bep",
+          "x": 4.596,
+          "y": 13.99,
+          "rotation": 270
+        },
+        {
+          "id": "tu-bep-tren",
+          "item": "tu-bep-tren",
+          "room": "bep",
+          "x": 4.596,
+          "y": 11.59,
+          "rotation": 270
+        },
+        {
+          "id": "tu-bep-tren-2",
+          "item": "tu-bep-tren",
+          "room": "bep",
+          "x": 4.596,
+          "y": 12.79,
+          "rotation": 270
+        },
+        {
+          "id": "tu-bep-tren-3",
+          "item": "tu-bep-tren",
+          "room": "bep",
+          "x": 4.596,
+          "y": 13.99,
+          "rotation": 270
+        },
+        {
+          "id": "ban-an",
+          "item": "ban-an",
+          "room": "bep",
+          "x": 2.537,
+          "y": 13.065,
+          "rotation": 90
+        },
+        {
+          "id": "ghe",
+          "item": "ghe",
+          "room": "bep",
+          "x": 1.89,
+          "y": 12.715,
+          "rotation": 90
+        },
+        {
+          "id": "ghe-2",
+          "item": "ghe",
+          "room": "bep",
+          "x": 3.184,
+          "y": 12.715,
+          "rotation": 270
+        },
+        {
+          "id": "ghe-3",
+          "item": "ghe",
+          "room": "bep",
+          "x": 1.89,
+          "y": 13.415,
+          "rotation": 90
+        },
+        {
+          "id": "ghe-4",
+          "item": "ghe",
+          "room": "bep",
+          "x": 3.184,
+          "y": 13.415,
+          "rotation": 270
+        },
+        {
+          "id": "ghe-5",
+          "item": "ghe",
+          "room": "bep",
+          "x": 2.537,
+          "y": 12.09,
+          "rotation": 180
+        },
+        {
+          "id": "ghe-6",
+          "item": "ghe",
+          "room": "bep",
+          "x": 2.537,
+          "y": 14.04,
+          "rotation": 0
+        },
+        {
+          "id": "voi-sen",
+          "item": "voi-sen",
+          "room": "wc1",
+          "x": 0.54,
+          "y": 16.944,
+          "rotation": 0
+        },
+        {
+          "id": "bon-cau",
+          "item": "bon-cau",
+          "room": "wc1",
+          "x": 1.3,
+          "y": 17.105,
+          "rotation": 0
+        },
+        {
+          "id": "tu-lavabo",
+          "item": "tu-lavabo",
+          "room": "wc1",
+          "x": 1.5,
+          "y": 15.813,
+          "rotation": 180
+        },
+        {
+          "id": "guong",
+          "item": "guong",
+          "room": "wc1",
+          "x": 1.5,
+          "y": 15.734,
+          "rotation": 180
+        },
+        {
+          "id": "cay-canh",
+          "item": "cay-canh",
+          "room": "sau",
+          "x": 2.29,
+          "y": 15.817,
+          "rotation": 180
+        },
+        {
+          "id": "cay-canh-2",
+          "item": "cay-canh",
+          "room": "sau",
+          "x": 4.71,
+          "y": 15.817,
+          "rotation": 180
+        }
+      ]
+    },
+    {
+      "rooms": [
+        {
+          "id": "ngu1",
+          "name": "Ngủ 1",
+          "type": "bedroom",
+          "x": 0,
+          "y": 0,
+          "w": 5,
+          "d": 4.5
+        },
+        {
+          "id": "ngu2",
+          "name": "Ngủ 2",
+          "type": "bedroom",
+          "x": 0,
+          "y": 4.5,
+          "w": 2.7,
+          "d": 4
+        },
+        {
+          "id": "hanh-lang2",
+          "name": "Hành lang",
+          "type": "hall",
+          "x": 2.7,
+          "y": 4.5,
+          "w": 1.1,
+          "d": 4
+        },
+        {
+          "id": "thang2",
+          "name": "Cầu thang",
+          "type": "stairs",
+          "x": 3.8,
+          "y": 5.5,
+          "w": 1.2,
+          "d": 5
+        },
+        {
+          "id": "sanh2",
+          "name": "Sảnh",
+          "type": "hall",
+          "x": 0,
+          "y": 8.5,
+          "w": 3.8,
+          "d": 2
+        },
+        {
+          "id": "ngu3",
+          "name": "Ngủ 3",
+          "type": "bedroom",
+          "x": 0,
+          "y": 10.5,
+          "w": 5,
+          "d": 4
+        },
+        {
+          "id": "wc2",
+          "name": "WC",
+          "type": "wc",
+          "x": 0,
+          "y": 14.5,
+          "w": 2.5,
+          "d": 2
+        },
+        {
+          "id": "tu-kho",
+          "name": "Tủ kho",
+          "type": "storage",
+          "x": 3.8,
+          "y": 4.5,
+          "w": 1.2,
+          "d": 1
+        },
+        {
+          "id": "logia",
+          "name": "Lô gia",
+          "type": "balcony",
+          "x": 2.5,
+          "y": 14.5,
+          "w": 2.5,
+          "d": 2
+        }
+      ],
+      "openings": [
+        {
+          "room": "ngu1",
+          "side": "front",
+          "offset": 1.0,
+          "width": 3.0,
+          "kind": "window"
+        },
+        {
+          "room": "ngu1",
+          "side": "back",
+          "offset": 2.8,
+          "width": 0.8
+        },
+        {
+          "room": "ngu1",
+          "side": "back",
+          "offset": 3.95,
+          "width": 0.8
+        },
+        {
+          "room": "ngu2",
+          "side": "back",
+          "offset": 1.4,
+          "width": 0.9
+        },
+        {
+          "room": "ngu2",
+          "side": "left",
+          "offset": 1.0,
+          "width": 1.4,
+          "kind": "window"
+        },
+        {
+          "room": "ngu3",
+          "side": "front",
+          "offset": 1.4,
+          "width": 0.9
+        },
+        {
+          "room": "ngu3",
+          "side": "back",
+          "offset": 0.8,
+          "width": 0.8
+        },
+        {
+          "room": "ngu3",
+          "side": "back",
+          "offset": 3.2,
+          "width": 0.9
+        },
+        {
+          "room": "ngu3",
+          "side": "left",
+          "offset": 1.2,
+          "width": 1.4,
+          "kind": "window"
+        }
+      ],
+      "furniture": [
+        {
+          "id": "cay-canh",
+          "item": "cay-canh",
+          "room": "sanh2",
+          "x": 0.29,
+          "y": 8.817,
+          "rotation": 180
+        },
+        {
+          "id": "giuong-doi",
+          "item": "giuong-doi",
+          "room": "ngu3",
+          "x": 3.1,
+          "y": 11.531,
+          "rotation": 180
+        },
+        {
+          "id": "tu-dau-giuong",
+          "item": "tu-dau-giuong",
+          "room": "ngu3",
+          "x": 4.165,
+          "y": 10.774,
+          "rotation": 180
+        },
+        {
+          "id": "tham",
+          "item": "tham",
+          "room": "ngu3",
+          "x": 3.1,
+          "y": 11.531,
+          "rotation": 0
+        },
+        {
+          "id": "tu-quan-ao",
+          "item": "tu-quan-ao",
+          "room": "ngu3",
+          "x": 0.9,
+          "y": 10.902,
+          "rotation": 180
+        },
+        {
+          "id": "tu-quan-ao-2",
+          "item": "tu-quan-ao",
+          "room": "ngu3",
+          "x": 4.598,
+          "y": 12.5,
+          "rotation": 270
+        },
+        {
+          "id": "ban-lam-viec",
+          "item": "ban-lam-viec",
+          "room": "ngu3",
+          "x": 4.59,
+          "y": 13.7,
+          "rotation": 270
+        },
+        {
+          "id": "ke-tivi",
+          "item": "ke-tivi",
+          "room": "ngu3",
+          "x": 2.4,
+          "y": 14.16,
+          "rotation": 0
+        },
+        {
+          "id": "tivi",
+          "item": "tivi",
+          "room": "ngu3",
+          "x": 2.4,
+          "y": 14.16,
+          "rotation": 0
+        },
+        {
+          "id": "den-cay",
+          "item": "den-cay",
+          "room": "ngu3",
+          "x": 4.735,
+          "y": 10.792,
+          "rotation": 180
+        },
+        {
+          "id": "cay-canh",
+          "item": "cay-canh",
+          "room": "ngu3",
+          "x": 0.29,
+          "y": 14.183,
+          "rotation": 0
+        },
+        {
+          "id": "voi-sen",
+          "item": "voi-sen",
+          "room": "wc2",
+          "x": 0.54,
+          "y": 15.944,
+          "rotation": 0
+        },
+        {
+          "id": "bon-cau",
+          "item": "bon-cau",
+          "room": "wc2",
+          "x": 1.25,
+          "y": 16.105,
+          "rotation": 0
+        },
+        {
+          "id": "tu-lavabo",
+          "item": "tu-lavabo",
+          "room": "wc2",
+          "x": 1.85,
+          "y": 16.186,
+          "rotation": 0
+        },
+        {
+          "id": "guong",
+          "item": "guong",
+          "room": "wc2",
+          "x": 1.85,
+          "y": 16.266,
+          "rotation": 0
+        },
+        {
+          "id": "cay-canh",
+          "item": "cay-canh",
+          "room": "logia",
+          "x": 2.79,
+          "y": 14.817,
+          "rotation": 180
+        },
+        {
+          "id": "cay-canh-2",
+          "item": "cay-canh",
+          "room": "logia",
+          "x": 4.71,
+          "y": 14.817,
+          "rotation": 180
+        },
+        {
+          "id": "giuong-doi",
+          "item": "giuong-doi",
+          "room": "ngu1",
+          "x": 1.032,
+          "y": 2.25,
+          "rotation": 90
+        },
+        {
+          "id": "tu-dau-giuong",
+          "item": "tu-dau-giuong",
+          "room": "ngu1",
+          "x": 0.274,
+          "y": 1.185,
+          "rotation": 90
+        },
+        {
+          "id": "tu-dau-giuong-2",
+          "item": "tu-dau-giuong",
+          "room": "ngu1",
+          "x": 0.274,
+          "y": 3.315,
+          "rotation": 90
+        },
+        {
+          "id": "tham",
+          "item": "tham",
+          "room": "ngu1",
+          "x": 1.032,
+          "y": 2.25,
+          "rotation": 0
+        },
+        {
+          "id": "tu-quan-ao",
+          "item": "tu-quan-ao",
+          "room": "ngu1",
+          "x": 4.598,
+          "y": 2.25,
+          "rotation": 270
+        },
+        {
+          "id": "tu-quan-ao-2",
+          "item": "tu-quan-ao",
+          "room": "ngu1",
+          "x": 4.598,
+          "y": 1.15,
+          "rotation": 270
+        },
+        {
+          "id": "ban-lam-viec",
+          "item": "ban-lam-viec",
+          "room": "ngu1",
+          "x": 2.5,
+          "y": 0.41,
+          "rotation": 180
+        },
+        {
+          "id": "ghe-lam-viec",
+          "item": "ghe-lam-viec",
+          "room": "ngu1",
+          "x": 2.5,
+          "y": 1.016,
+          "rotation": 0
+        },
+        {
+          "id": "den-cay",
+          "item": "den-cay",
+          "room": "ngu1",
+          "x": 0.265,
+          "y": 0.292,
+          "rotation": 180
+        },
+        {
+          "id": "cay-canh",
+          "item": "cay-canh",
+          "room": "ngu1",
+          "x": 4.71,
+          "y": 0.318,
+          "rotation": 180
+        },
+        {
+          "id": "giuong-don",
+          "item": "giuong-don",
+          "room": "ngu2",
+          "x": 1.35,
+          "y": 5.476,
+          "rotation": 180
+        },
+        {
+          "id": "tu-dau-giuong",
+          "item": "tu-dau-giuong",
+          "room": "ngu2",
+          "x": 0.635,
+          "y": 4.774,
+          "rotation": 180
+        },
+        {
+          "id": "tu-dau-giuong-2",
+          "item": "tu-dau-giuong",
+          "room": "ngu2",
+          "x": 2.065,
+          "y": 4.774,
+          "rotation": 180
+        },
+        {
+          "id": "tu-quan-ao",
+          "item": "tu-quan-ao",
+          "room": "ngu2",
+          "x": 0.402,
+          "y": 7.4,
+          "rotation": 90
+        },
+        {
+          "id": "ban-lam-viec",
+          "item": "ban-lam-viec",
+          "room": "ngu2",
+          "x": 0.41,
+          "y": 6.2,
+          "rotation": 90
+        },
+        {
+          "id": "den-cay",
+          "item": "den-cay",
+          "room": "ngu2",
+          "x": 0.265,
+          "y": 8.208,
+          "rotation": 0
+        }
+      ]
+    }
+  ],
+  "facade": {
+    "style": "basic"
+  },
+  "colors": {
+    "categories": {
+      "wall": "#f3ead6",
+      "roof": "#a0472f"
+    }
+  }
+}

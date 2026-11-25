@@ -22,7 +22,12 @@ import { InlineEditor } from "../components/InlineEditor";
 import { StatusBadge } from "../components/StatusBadge";
 import { ProjectTile } from "../components/ProjectTile";
 import { BudgetPolicyCard } from "../components/BudgetPolicyCard";
+import { ProjectFiles } from "../components/ProjectFiles";
 import { IssuesList } from "../components/IssuesList";
+import { useCoordinatorWorkspaceEnabled } from "../hooks/useCoordinatorWorkspaceEnabled";
+import { useStreamlinedUiEnabled } from "../hooks/useStreamlinedUiEnabled";
+import { CoordinatorTasks } from "./CoordinatorTasks";
+import { resolveIssuesPresentation } from "./Issues";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { QueryErrorState, useQueryView } from "../components/QueryView";
 import { PageTabBar } from "../components/PageTabBar";
@@ -53,7 +58,7 @@ import { companyProjectsQuery } from "@/lib/company-projects-query";
 
 /* ── Top-level tab types ── */
 
-type ProjectBaseTab = "list" | "plugin-operations" | "workspaces" | "configuration" | "budget";
+type ProjectBaseTab = "list" | "plugin-operations" | "workspaces" | "configuration" | "budget" | "files";
 type ProjectPluginTab = `plugin:${string}`;
 type ProjectTab = ProjectBaseTab | ProjectPluginTab;
 
@@ -69,6 +74,7 @@ function resolveProjectTab(pathname: string, projectId: string): ProjectTab | nu
   if (tab === "overview") return "configuration";
   if (tab === "configuration") return "configuration";
   if (tab === "budget") return "budget";
+  if (tab === "files") return "files";
   if (tab === "issues") return "list";
   if (tab === "plugin-operations") return "plugin-operations";
   if (tab === "workspaces") return "workspaces";
@@ -190,7 +196,16 @@ function ProjectTilePicker({
 
 /* ── List (issues) tab content ── */
 
-function ProjectIssuesList({ projectId, companyId }: { projectId: string; companyId: string }) {
+function ProjectIssuesList({ project }: { project: { id: string; companyId: string; name: string } }) {
+  const { enabled } = useCoordinatorWorkspaceEnabled();
+  return enabled
+    ? <CoordinatorTasks key={project.id} project={project} />
+    : <ClassicProjectIssuesList projectId={project.id} companyId={project.companyId} />;
+}
+
+function ClassicProjectIssuesList({ projectId, companyId }: { projectId: string; companyId: string }) {
+  const { enabled } = useStreamlinedUiEnabled();
+  const presentation = resolveIssuesPresentation(enabled);
   const showAgentCreatedTasks = useShowAgentCreatedTasks(companyId, "paperclip:project-issues-view");
   const queryClient = useQueryClient();
 
@@ -248,6 +263,7 @@ function ProjectIssuesList({ projectId, companyId }: { projectId: string; compan
       projectId={projectId}
       enableAgentCreatedVisibilityFilter
       viewStateKey="paperclip:project-issues-view"
+      {...presentation}
       onUpdateIssue={(id, data) => updateIssue.mutate({ id, data })}
     />
   );
@@ -538,6 +554,10 @@ export function ProjectDetail() {
       navigate(`/projects/${canonicalProjectRef}/budget`, { replace: true });
       return;
     }
+    if (activeTab === "files") {
+      navigate(`/projects/${canonicalProjectRef}/files`, { replace: true });
+      return;
+    }
     if (activeTab === "plugin-operations") {
       navigate(`/projects/${canonicalProjectRef}/plugin-operations`, { replace: true });
       return;
@@ -693,6 +713,9 @@ export function ProjectDetail() {
     if (cachedTab === "budget") {
       return <Navigate to={`/projects/${canonicalProjectRef}/budget`} replace />;
     }
+    if (cachedTab === "files") {
+      return <Navigate to={`/projects/${canonicalProjectRef}/files`} replace />;
+    }
     if (cachedTab === "plugin-operations" && project?.managedByPlugin) {
       return <Navigate to={`/projects/${canonicalProjectRef}/plugin-operations`} replace />;
     }
@@ -736,6 +759,8 @@ export function ProjectDetail() {
       navigate(`/projects/${canonicalProjectRef}/workspaces`);
     } else if (tab === "budget") {
       navigate(`/projects/${canonicalProjectRef}/budget`);
+    } else if (tab === "files") {
+      navigate(`/projects/${canonicalProjectRef}/files`);
     } else if (tab === "plugin-operations") {
       navigate(`/projects/${canonicalProjectRef}/plugin-operations`);
     } else if (tab === "configuration") {
@@ -874,6 +899,7 @@ export function ProjectDetail() {
             ...(showWorkspacesTab ? [{ value: "workspaces", label: "Workspaces" }] : []),
             { value: "configuration", label: "Configuration" },
             { value: "budget", label: "Budget" },
+            { value: "files", label: "Files" },
             ...pluginTabItems.map((item) => ({
               value: item.value,
               label: item.label,
@@ -888,7 +914,7 @@ export function ProjectDetail() {
 
 
       {activeTab === "list" && project?.id && resolvedCompanyId && (
-        <ProjectIssuesList projectId={project.id} companyId={resolvedCompanyId} />
+        <ProjectIssuesList project={{ id: project.id, companyId: resolvedCompanyId, name: project.name }} />
       )}
 
       {activeTab === "plugin-operations" && project?.id && resolvedCompanyId && project.managedByPlugin && (
@@ -943,6 +969,10 @@ export function ProjectDetail() {
             onSave={(amount) => budgetMutation.mutate(amount)}
           />
         </div>
+      ) : null}
+
+      {activeTab === "files" && resolvedCompanyId ? (
+        <ProjectFiles companyId={resolvedCompanyId} projectId={project.id} />
       ) : null}
 
       {activePluginTab && (

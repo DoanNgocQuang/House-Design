@@ -7,6 +7,7 @@ import {
   CircleCheck,
   Target,
   LayoutDashboard,
+  ChartNoAxesColumn,
   DollarSign,
   History,
   Search,
@@ -178,6 +179,7 @@ function ClassicSidebar({ children }: { children?: ReactNode }) {
               Cmd/Ctrl+K remains the keyboard path (command palette). */}
           <SidebarNavItem to="/search" label="Search" icon={Search} />
           <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} liveCount={liveRunCount} />
+          <SidebarNavItem to="/agent-stats" label="Agent Stats" icon={ChartNoAxesColumn} />
           {!combinedInboxTasks ? (
             <SidebarNavItem
               to="/inbox"

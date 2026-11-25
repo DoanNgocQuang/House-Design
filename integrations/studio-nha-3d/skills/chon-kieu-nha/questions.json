@@ -1,0 +1,95 @@
+{
+  "kind": "ask_user_questions",
+  "idempotencyKey": "questions:{issueId}:chon-kieu-nha:v1",
+  "title": "Chọn kiểu nhà",
+  "resolverPolicy": "human_only",
+  "continuationPolicy": "wake_assignee",
+  "payload": {
+    "version": 1,
+    "questionSet": {
+      "schema": "paperclip.question_set.v1",
+      "questions": [
+        {
+          "id": "kieu-nha",
+          "header": "Kiểu nhà",
+          "prompt": "Anh/chị thích kiểu nhà nào?",
+          "answerMode": "single_select",
+          "required": true,
+          "customAnswer": { "enabled": true },
+          "options": [
+            { "id": "nha-pho-mai-thai", "label": "Nhà phố mái Thái", "description": "Nhà mặt phố lô hẹp 5x20m, 2–3 tầng, gara tầng 1, mái ngói 4 mái dốc đứng" },
+            { "id": "nha-ong-san-thuong", "label": "Nhà ống có sân thượng", "description": "Nhà hẹp sâu 4–5m, 3–4 tầng, mái bằng, tầng tum có phòng thờ, sân thượng trước và sau" },
+            { "id": "nha-hien-dai-mai-lech", "label": "Nhà hiện đại mái lệch", "description": "Hình chữ L, tường trắng, tầng 2 lùi vào làm sân thượng lan can kính, vách kính lớn, lam gỗ che nắng" },
+            { "id": "biet-thu-mai-nhat", "label": "Biệt thự mái Nhật chữ L", "description": "Hình chữ L, mái ngói dốc thấp chìa dài 1m, hiên có cột trước nhà, vách kính, sân vườn có hồ nước" },
+            { "id": "biet-thu-tan-co-dien", "label": "Biệt thự tân cổ điển", "description": "Kiểu Pháp: mái mansard 2 độ dốc có cửa sổ mái, lan can con tiện, gờ chỉ giữa các tầng, cửa khung trắng" },
+            { "id": "nha-indochine", "label": "Nhà Indochine", "description": "Pha Pháp và Á Đông: mái ngói chồng 2 cấp, tường vàng, khung cửa xanh rêu, lan can song sắt" },
+            { "id": "nha-vuon-chu-u", "label": "Nhà vườn chữ U", "description": "1 tầng, 3 cánh nhà ôm một sân vườn ở giữa, mái ngói 2 mái, hiên trước có cột" },
+            { "id": "nha-cap-4-chu-l", "label": "Nhà cấp 4 chữ L", "description": "1 tầng hình chữ L, 2 phòng ngủ, mái ngói 4 mái, chi phí thấp" },
+            { "id": "studio-tu-chon", "label": "Để studio tự chọn", "description": "Studio chọn kiểu hợp với lô đất và nhu cầu" }
+          ]
+        },
+        {
+          "id": "kieu-mai",
+          "header": "Kiểu mái",
+          "prompt": "Anh/chị muốn kiểu mái nào?",
+          "answerMode": "single_select",
+          "required": true,
+          "customAnswer": { "enabled": true },
+          "options": [
+            { "id": "mai-thai", "label": "Mái Thái", "description": "4 mái dốc 35°, ngói" },
+            { "id": "mai-nhat", "label": "Mái Nhật", "description": "4 mái dốc thấp, chìa dài" },
+            { "id": "mai-ngoi-2-mai", "label": "Mái ngói 2 mái", "description": "Đầu hồi tam giác" },
+            { "id": "mai-bang", "label": "Mái bằng", "description": "Có lan can, dùng làm sân thượng" },
+            { "id": "mai-lech", "label": "Mái lệch", "description": "Một mặt dốc, kiểu hiện đại" },
+            { "id": "mai-mansard", "label": "Mái mansard", "description": "Mái Pháp hai độ dốc, có cửa sổ mái" },
+            { "id": "mai-chong-cap", "label": "Mái chồng 2 cấp", "description": "Kiểu đình, Indochine" },
+            { "id": "theo-kieu-nha", "label": "Theo kiểu nhà đã chọn", "description": "Dùng mái như ảnh kiểu nhà" }
+          ]
+        },
+        {
+          "id": "quy-mo",
+          "header": "Quy mô",
+          "prompt": "Nhà mấy tầng và cần mấy phòng ngủ?",
+          "answerMode": "single_select",
+          "required": true,
+          "customAnswer": { "enabled": true },
+          "options": [
+            { "id": "1-tang", "label": "1 tầng, 2–3 phòng ngủ" },
+            { "id": "2-tang", "label": "2 tầng, 3–4 phòng ngủ" },
+            { "id": "3-tang", "label": "3 tầng trở lên, 4–5 phòng ngủ" },
+            { "id": "studio-tu-chon", "label": "Để studio tự chọn" }
+          ]
+        },
+        {
+          "id": "lo-dat",
+          "header": "Lô đất",
+          "prompt": "Lô đất cỡ nào? (ghi kích thước chính xác vào ô trả lời nếu biết)",
+          "answerMode": "single_select",
+          "required": true,
+          "customAnswer": { "enabled": true },
+          "options": [
+            { "id": "lo-hep", "label": "Lô hẹp phố", "description": "Rộng 4–5m, sâu 15–20m" },
+            { "id": "lo-vua", "label": "Lô vừa", "description": "Rộng 8–12m, sâu 20m" },
+            { "id": "lo-rong", "label": "Lô rộng", "description": "Rộng từ 15m, có đất làm vườn" },
+            { "id": "studio-tu-chon", "label": "Để studio tự chọn" }
+          ]
+        },
+        {
+          "id": "san-vuon",
+          "header": "Sân vườn",
+          "prompt": "Ngoài nhà cần những gì? (chọn nhiều)",
+          "answerMode": "multi_select",
+          "required": false,
+          "options": [
+            { "id": "san-vuon", "label": "Sân vườn, thảm cỏ, cây" },
+            { "id": "hang-rao", "label": "Hàng rào và cổng" },
+            { "id": "ho-nuoc", "label": "Hồ nước" },
+            { "id": "gara", "label": "Gara ô tô" },
+            { "id": "san-thuong", "label": "Sân thượng" },
+            { "id": "gieng-troi", "label": "Giếng trời" }
+          ]
+        }
+      ]
+    }
+  }
+}

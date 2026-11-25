@@ -382,6 +382,17 @@ const support = external ? { supported: true } : await getEmbeddedPostgresTestSu
     await start(); await quiet(); expect(rpc).not.toHaveBeenCalled();
     const [run] = await runs(); await pluginJobStore(db).completeRun(run.id, { status: "cancelled" }); await completed();
   });
+  it("closes a run a stopped process can no longer finish, so its job runs again", async () => {
+    const row = await due();
+    const run = await pluginJobStore(db).createRun({ jobId: row.id, pluginId, trigger: "schedule" });
+    await pluginJobStore(db).markRunning(run.id);
+    await db.update(pluginJobRuns).set({ startedAt: new Date(Date.now() - 331_000) }).where(eq(pluginJobRuns.id, run.id));
+    await start(); await completed(2);
+    const all = await runs();
+    expect(all.find(item => item.id === run.id)).toMatchObject({ status: "failed", error: "Interrupted before it finished" });
+    expect(all.filter(item => item.status === "succeeded")).toHaveLength(1);
+    expect(rpc).toHaveBeenCalledOnce();
+  });
   it("fills released capacity from completion without a poll", async () => {
     await due("one"); await due("two"); let release!: () => void;
     rpc.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));

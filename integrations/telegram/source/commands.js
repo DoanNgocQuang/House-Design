@@ -1,0 +1,625 @@
+import { JsonRpcCallError, PLUGIN_RPC_ERROR_CODES } from "@paperclipai/plugin-sdk";
+import { sendMessage, escapeMarkdownV2, sendChatAction } from "./telegram-api.js";
+import { METRIC_NAMES } from "./constants.js";
+import { countAgents } from "./agent-status.js";
+import { handleAcpCommand } from "./acp-bridge.js";
+import { buildPaperclipAuthHeaders, fetchPaperclipApi } from "./paperclip-api.js";
+import { str } from "./coerce.js";
+// Leaves headroom below Telegram's 4096-char hard limit for /agents so a
+// company with many agents doesn't produce a message the API silently drops.
+const AGENTS_MESSAGE_CHAR_BUDGET = 3500;
+export const BOT_COMMANDS = [
+    { command: "create", description: "Create a new task (assigned to CEO agent)" },
+    { command: "status", description: "Company health: active agents, open issues" },
+    { command: "issues", description: "List open issues (optionally by project)" },
+    { command: "agents", description: "List agents with current status" },
+    { command: "approve", description: "Approve a pending request by ID" },
+    { command: "help", description: "Show available commands" },
+    { command: "connect", description: "Link this chat to a Paperclip company" },
+    { command: "connect_topic", description: "Map a project to a forum topic" },
+    { command: "topics", description: "List or remove forum topic mappings" },
+    { command: "acp", description: "Manage agent sessions (spawn, status, cancel, close)" },
+    { command: "commands", description: "Manage custom workflow commands (list, import, run, delete)" },
+];
+// Grouped by task rather than BOT_COMMANDS's flat menu order: a first-time
+// user scanning /help should be able to tell "what do I use for approvals"
+// at a glance, not read 11 undifferentiated lines. Every command in
+// BOT_COMMANDS appears in exactly one group here (enforced by a test).
+export const HELP_GROUPS = [
+    {
+        title: "Daily use",
+        entries: [
+            { usage: "/create <task title>", description: "Create a new task (assigned to CEO agent)" },
+            { usage: "/status", description: "Company health: active agents, open issues" },
+            { usage: "/issues [project]", description: "List open issues (optionally by project)" },
+            { usage: "/help", description: "Show available commands" },
+        ],
+    },
+    {
+        title: "Approvals",
+        entries: [{ usage: "/approve <approval-id>", description: "Approve a pending request by ID" }],
+    },
+    {
+        title: "Agent sessions",
+        entries: [
+            { usage: "/acp <spawn|status|cancel|close>", description: "Manage agent sessions" },
+            { usage: "/agents", description: "List agents with current status" },
+        ],
+    },
+    {
+        title: "Automation",
+        entries: [
+            { usage: "/commands <list|import|run|delete>", description: "Manage custom workflow commands" },
+        ],
+    },
+    {
+        title: "Setup",
+        entries: [
+            { usage: "/connect <company-name>", description: "Link this chat to a Paperclip company" },
+            { usage: "/connect_topic <project-name> [topic-id]", description: "Map a project to a forum topic" },
+            { usage: "/topics <list|remove|clear>", description: "List or remove forum topic mappings" },
+        ],
+    },
+];
+export async function handleCommand(ctx, token, chatId, command, args, messageThreadId, baseUrl, publicUrl, companyId, boardApiToken, maxAgentsPerThread, connectCompanyIds) {
+    await ctx.metrics.write(METRIC_NAMES.commandsHandled, 1);
+    switch (command) {
+        case "create":
+            await handleCreate(ctx, token, chatId, args, messageThreadId, publicUrl || baseUrl, companyId);
+            break;
+        case "status":
+            await handleStatus(ctx, token, chatId, messageThreadId, publicUrl, companyId);
+            break;
+        case "issues":
+            await handleIssues(ctx, token, chatId, args, messageThreadId, publicUrl || baseUrl, companyId);
+            break;
+        case "agents":
+            await handleAgents(ctx, token, chatId, messageThreadId, publicUrl, companyId);
+            break;
+        case "approve":
+            await handleApprove(ctx, token, chatId, args, messageThreadId, baseUrl, boardApiToken);
+            break;
+        // /start is Telegram's own entry point — the client shows it as a button on
+        // every new chat, so it is the first thing most users ever send. Without a
+        // case here it falls through to "Unknown command: /start", which is a poor
+        // first impression of the bot. Deliberately not added to BOT_COMMANDS:
+        // Telegram treats /start as implicit and listing it clutters the menu.
+        case "start":
+        case "help":
+            await handleHelp(ctx, token, chatId, messageThreadId);
+            break;
+        case "connect":
+            await handleConnect(ctx, token, chatId, args, messageThreadId, connectCompanyIds);
+            break;
+        case "connect_topic":
+            await handleConnectTopic(ctx, token, chatId, args, messageThreadId);
+            break;
+        case "topics":
+            await handleTopicsCommand(ctx, token, chatId, args, messageThreadId);
+            break;
+        case "acp":
+            await handleAcpCommand(ctx, token, chatId, args, messageThreadId, companyId, maxAgentsPerThread);
+            break;
+        default:
+            await sendMessage(ctx, token, chatId, `Unknown command: /${command}. Try /help`, {
+                messageThreadId,
+            });
+    }
+}
+function isExternalUrl(url) {
+    return !!url && url.startsWith("https://");
+}
+async function handleStatus(ctx, token, chatId, messageThreadId, publicUrl, resolvedCompanyId) {
+    await sendChatAction(ctx, token, chatId);
+    try {
+        const companyId = resolvedCompanyId ?? await resolveCompanyId(ctx, chatId);
+        const agents = await ctx.agents.list({ companyId });
+        // Agents report "running" or "idle" (and "paused"/"error" when unavailable).
+        // Counting `status === "active"` matched nothing on current hosts, so this
+        // line always read "0/N" no matter how many agents were working.
+        const counts = countAgents(agents);
+        const issues = await ctx.issues.list({ companyId, limit: 10 });
+        const doneIssues = issues.filter((i) => i.status === "done");
+        const agentLine = `${escapeMarkdownV2("🤖")} Agents: *${counts.working}* running, ` +
+            `*${escapeMarkdownV2(String(counts.available))}* available` +
+            (counts.unavailable > 0 ? escapeMarkdownV2(` (${counts.unavailable} paused/error)`) : "");
+        const lines = [
+            escapeMarkdownV2("📊") + " *Paperclip Status*",
+            "",
+            agentLine,
+            `${escapeMarkdownV2("📋")} Recent issues: *${escapeMarkdownV2(String(issues.length))}* \\(${escapeMarkdownV2(String(doneIssues.length))} done\\)`,
+        ];
+        const inlineKeyboard = isExternalUrl(publicUrl)
+            ? [[{ text: "Open Dashboard ↗", url: publicUrl }]]
+            : undefined;
+        await sendMessage(ctx, token, chatId, lines.join("\n"), {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+            inlineKeyboard,
+        });
+    }
+    catch {
+        await sendMessage(ctx, token, chatId, escapeMarkdownV2("📊") + " *Paperclip Status*\n\n" + escapeMarkdownV2("Could not fetch status. Make sure this chat is linked to a company with /connect."), {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+        });
+    }
+}
+async function handleIssues(ctx, token, chatId, projectFilter, messageThreadId, baseUrl, resolvedCompanyId) {
+    await sendChatAction(ctx, token, chatId);
+    try {
+        const companyId = resolvedCompanyId ?? await resolveCompanyId(ctx, chatId);
+        const company = await ctx.companies.get(companyId);
+        const issues = await ctx.issues.list({ companyId, limit: 10 });
+        const filtered = projectFilter
+            ? issues.filter((i) => {
+                const projName = i.project?.name ?? "";
+                return projName.toLowerCase().includes(projectFilter.toLowerCase());
+            })
+            : issues;
+        if (filtered.length === 0) {
+            const filter = projectFilter ? ` for project "${projectFilter}"` : "";
+            await sendMessage(ctx, token, chatId, `No issues found${filter}.`, { messageThreadId });
+            return;
+        }
+        const issuePrefix = company?.issuePrefix;
+        const statusEmoji = { done: "✅", todo: "📋", in_progress: "🔄", backlog: "📥" };
+        const lines = [escapeMarkdownV2("📋") + " *Open Issues*", ""];
+        for (const issue of filtered) {
+            const emoji = statusEmoji[issue.status] ?? "📋";
+            const id = issue.identifier ?? issue.id;
+            const idText = issuePrefix && baseUrl
+                ? `[${escapeMarkdownV2(id)}](${baseUrl}/${issuePrefix}/issues/${id})`
+                : escapeMarkdownV2(id);
+            lines.push(`${escapeMarkdownV2(emoji)} ${idText} \\- ${escapeMarkdownV2(issue.title)}`);
+        }
+        await sendMessage(ctx, token, chatId, lines.join("\n"), {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+        });
+    }
+    catch {
+        const filter = projectFilter ? ` for project "${projectFilter}"` : "";
+        await sendMessage(ctx, token, chatId, `Could not fetch issues${filter}. Make sure this chat is linked with /connect.`, { messageThreadId });
+    }
+}
+async function handleAgents(ctx, token, chatId, messageThreadId, publicUrl, resolvedCompanyId) {
+    await sendChatAction(ctx, token, chatId);
+    try {
+        const companyId = resolvedCompanyId ?? await resolveCompanyId(ctx, chatId);
+        const agents = await ctx.agents.list({ companyId });
+        if (agents.length === 0) {
+            await sendMessage(ctx, token, chatId, "No agents found.", { messageThreadId });
+            return;
+        }
+        const hasLinks = isExternalUrl(publicUrl);
+        const statusEmoji = { active: "🟢", error: "🔴", paused: "🟡", idle: "⚪", running: "🔵" };
+        const lines = [escapeMarkdownV2("🤖") + " *Agents*", ""];
+        let shown = 0;
+        for (const agent of agents) {
+            const emoji = statusEmoji[agent.status] ?? "⚪";
+            const line = hasLinks
+                ? `${escapeMarkdownV2(emoji)} [${escapeMarkdownV2(agent.name)}](${publicUrl}/agents/${agent.id}) \\- ${escapeMarkdownV2(agent.status)}`
+                : `${escapeMarkdownV2(emoji)} *${escapeMarkdownV2(agent.name)}* \\- ${escapeMarkdownV2(agent.status)}`;
+            // Stop before the message grows past Telegram's 4096-char hard limit,
+            // leaving room for a trailing "and N more" line.
+            const projected = lines.join("\n").length + 1 + line.length;
+            if (shown > 0 && projected > AGENTS_MESSAGE_CHAR_BUDGET)
+                break;
+            lines.push(line);
+            shown++;
+        }
+        const remaining = agents.length - shown;
+        if (remaining > 0) {
+            lines.push("", escapeMarkdownV2(`…and ${remaining} more`));
+        }
+        await sendMessage(ctx, token, chatId, lines.join("\n"), {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+        });
+    }
+    catch {
+        await sendMessage(ctx, token, chatId, "Could not fetch agents. Make sure this chat is linked with /connect.", { messageThreadId });
+    }
+}
+async function handleApprove(ctx, token, chatId, approvalId, messageThreadId, baseUrl = "http://localhost:3100", boardApiToken) {
+    if (!approvalId.trim()) {
+        await sendMessage(ctx, token, chatId, "Usage: /approve <approval-id>", {
+            messageThreadId,
+        });
+        return;
+    }
+    try {
+        await fetchPaperclipApi(ctx, `${baseUrl}/api/approvals/${approvalId.trim()}/approve`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...buildPaperclipAuthHeaders(boardApiToken),
+            },
+            body: JSON.stringify({ decidedByUserId: `telegram:${chatId}` }),
+        });
+        await sendMessage(ctx, token, chatId, `${escapeMarkdownV2("✅")} *Approved*: \`${escapeMarkdownV2(approvalId.trim())}\``, { parseMode: "MarkdownV2", messageThreadId });
+    }
+    catch (err) {
+        await sendMessage(ctx, token, chatId, `Failed to approve ${approvalId}: ${err instanceof Error ? err.message : String(err)}`, { messageThreadId });
+    }
+}
+async function handleHelp(ctx, token, chatId, messageThreadId) {
+    const lines = [escapeMarkdownV2("📎") + " *Paperclip Bot Commands*"];
+    for (const group of HELP_GROUPS) {
+        lines.push("");
+        lines.push(`*${escapeMarkdownV2(group.title)}*`);
+        for (const entry of group.entries) {
+            lines.push(`${escapeMarkdownV2(entry.usage)} \\- ${escapeMarkdownV2(entry.description)}`);
+        }
+    }
+    lines.push("");
+    lines.push(escapeMarkdownV2("Run a command with no arguments (e.g. /acp) to see its full usage."));
+    await sendMessage(ctx, token, chatId, lines.join("\n"), {
+        parseMode: "MarkdownV2",
+        messageThreadId,
+    });
+}
+// Background commands cannot discover companies with an unscoped list call:
+// it races with live host invocations. IDs come from verified config deliveries;
+// re-reading each explicit company lets the host enforce current authorization.
+async function connectCompanies(ctx, companyIds) {
+    if (companyIds === undefined)
+        return ctx.companies.list();
+    const companies = await Promise.all(companyIds.map(async (id) => {
+        try {
+            return await ctx.companies.get(id);
+        }
+        catch (err) {
+            // Revoked scopes are unavailable, but a timeout or host failure must
+            // remain an error instead of masquerading as a missing company.
+            if (err instanceof JsonRpcCallError && err.code === PLUGIN_RPC_ERROR_CODES.INVOCATION_SCOPE_DENIED)
+                return null;
+            throw err;
+        }
+    }));
+    return companies.filter((company) => company !== null);
+}
+async function handleConnect(ctx, token, chatId, companyArg, messageThreadId, connectCompanyIds) {
+    if (!companyArg.trim()) {
+        try {
+            const companies = await connectCompanies(ctx, connectCompanyIds);
+            const names = companies.map((c) => c.name || c.id).join(", ");
+            await sendMessage(ctx, token, chatId, `Usage: /connect <company-name>\nAvailable: ${names || "none"}`, { messageThreadId });
+        }
+        catch {
+            await sendMessage(ctx, token, chatId, "Usage: /connect <company-name>\nCould not load available companies. Please try again.", { messageThreadId });
+        }
+        return;
+    }
+    try {
+        const input = companyArg.trim();
+        const companies = await connectCompanies(ctx, connectCompanyIds);
+        const match = companies.find((c) => c.id === input ||
+            c.name?.toLowerCase() === input.toLowerCase());
+        if (!match) {
+            const names = companies.map((c) => c.name || c.id).join(", ");
+            await sendMessage(ctx, token, chatId, `Company "${input}" not found. Available: ${names || "none"}`, { messageThreadId });
+            return;
+        }
+        const existing = await ctx.state.get({
+            scopeKind: "instance",
+            stateKey: `chat_${chatId}`,
+        });
+        if (existing?.companyId === match.id) {
+            ctx.logger.info("Chat already linked to company", { chatId, companyId: match.id, companyName: match.name });
+            return;
+        }
+        // Inbound: chat → company (for commands like /status)
+        await ctx.state.set({ scopeKind: "instance", stateKey: `chat_${chatId}` }, { companyId: match.id, companyName: match.name ?? input, linkedAt: new Date().toISOString() });
+        // Outbound: company → chat (for notifications)
+        await ctx.state.set({ scopeKind: "company", scopeId: match.id, stateKey: "telegram-chat" }, chatId);
+        await sendMessage(ctx, token, chatId, `${escapeMarkdownV2("🔗")} ${escapeMarkdownV2("Linked this chat to company:")} *${escapeMarkdownV2(match.name ?? input)}*`, { parseMode: "MarkdownV2", messageThreadId });
+        ctx.logger.info("Chat linked to company", { chatId, companyId: match.id, companyName: match.name });
+    }
+    catch (err) {
+        await sendMessage(ctx, token, chatId, `Failed to connect: ${err instanceof Error ? err.message : String(err)}`, { messageThreadId });
+    }
+}
+async function handleCreate(ctx, token, chatId, titleArg, messageThreadId, linkBaseUrl, resolvedCompanyId) {
+    const title = titleArg.trim();
+    if (!title) {
+        await sendMessage(ctx, token, chatId, "Usage: /create <task title>", { messageThreadId });
+        return;
+    }
+    await sendChatAction(ctx, token, chatId);
+    try {
+        const companyId = resolvedCompanyId ?? await resolveCompanyId(ctx, chatId);
+        const company = await ctx.companies.get(companyId);
+        const issuePrefix = company?.issuePrefix;
+        const projectId = await resolveProjectIdForTopic(ctx, chatId, companyId, messageThreadId);
+        // Find the CEO agent to assign to
+        const agents = await ctx.agents.list({ companyId });
+        const ceo = agents.find((a) => a.role === "ceo" && a.status !== "paused" && a.status !== "error");
+        // Create the issue WITHOUT assignee first, then update with both status and assignee.
+        // This ordering is load-bearing: the issue_assigned wake only fires when the assignee
+        // *transitions* from null to an agent. If we set the assignee at creation time, there's
+        // no transition and the agent never gets woken.
+        let issue = await ctx.issues.create({ companyId, title, ...(projectId ? { projectId } : {}) });
+        if (ceo) {
+            issue = await ctx.issues.update(issue.id, { status: "todo", assigneeAgentId: ceo.id }, companyId);
+        }
+        else {
+            // No CEO to assign to — still bump status to todo so it's visible in the backlog
+            issue = await ctx.issues.update(issue.id, { status: "todo" }, companyId);
+        }
+        const id = issue.identifier ?? issue.id;
+        const hasLink = linkBaseUrl && isExternalUrl(linkBaseUrl) && issuePrefix;
+        const idText = hasLink
+            ? `[${escapeMarkdownV2(id)}](${linkBaseUrl}/${issuePrefix}/issues/${id})`
+            : `\`${escapeMarkdownV2(id)}\``;
+        const assigneeText = ceo ? ` ${escapeMarkdownV2("→")} *${escapeMarkdownV2(ceo.name)}*` : "";
+        await sendMessage(ctx, token, chatId, `${escapeMarkdownV2("✅")} *Task created*: ${idText}${assigneeText}\n${escapeMarkdownV2(title)}`, { parseMode: "MarkdownV2", messageThreadId });
+    }
+    catch (err) {
+        await sendMessage(ctx, token, chatId, `Failed to create task: ${err instanceof Error ? err.message : String(err)}`, { messageThreadId });
+    }
+}
+export async function handleConnectTopic(ctx, token, chatId, args, messageThreadId) {
+    const trimmedArgs = args.trim();
+    if (!trimmedArgs) {
+        await sendMessage(ctx, token, chatId, "Usage: /connect\\_topic <project\\-name> \\[topic\\-id\\]", {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+        });
+        return;
+    }
+    const parts = trimmedArgs.split(/\s+/);
+    if (parts.length < 2 && !messageThreadId) {
+        await sendMessage(ctx, token, chatId, "Usage: /connect\\_topic <project\\-name> \\[topic\\-id\\]", {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+        });
+        return;
+    }
+    let topicId;
+    let projectNameInput;
+    const explicitTopicId = parts.length >= 2 && /^\d+$/.test(parts[parts.length - 1]);
+    if (explicitTopicId) {
+        topicId = parts.pop();
+        projectNameInput = parts.join(" ");
+    }
+    else {
+        if (!messageThreadId) {
+            await sendMessage(ctx, token, chatId, "Usage: /connect\\_topic <project\\-name> \\[topic\\-id\\]", {
+                parseMode: "MarkdownV2",
+                messageThreadId,
+            });
+            return;
+        }
+        topicId = String(messageThreadId);
+        projectNameInput = parts.join(" ");
+    }
+    let companyId;
+    try {
+        companyId = await resolveCompanyId(ctx, chatId);
+    }
+    catch {
+        await sendMessage(ctx, token, chatId, "This chat is not linked to a Paperclip company. Use /connect first.", { messageThreadId });
+        return;
+    }
+    const project = await resolveProjectByName(ctx, companyId, projectNameInput);
+    if (!project) {
+        await sendProjectNotFoundMessage(ctx, token, chatId, companyId, projectNameInput, messageThreadId);
+        return;
+    }
+    const topicMap = await getTopicMap(ctx, chatId);
+    const existingKey = findTopicMapKey(topicMap, project.name) ?? findTopicMapKey(topicMap, projectNameInput);
+    if (existingKey && existingKey !== project.name) {
+        delete topicMap[existingKey];
+    }
+    topicMap[project.name] = { projectId: project.id, projectName: project.name, topicId };
+    await setTopicMap(ctx, chatId, topicMap);
+    await sendMessage(ctx, token, chatId, `${escapeMarkdownV2("🔗")} ${escapeMarkdownV2(`Mapped project "${project.name}" to topic ${topicId}`)}`, { parseMode: "MarkdownV2", messageThreadId });
+    ctx.logger.info("Topic mapped", { chatId, projectId: project.id, projectName: project.name, topicId });
+}
+async function handleTopicsCommand(ctx, token, chatId, args, messageThreadId) {
+    const [subcommand = "list", ...rest] = args.trim().split(/\s+/).filter(Boolean);
+    switch (subcommand.toLowerCase()) {
+        case "list":
+            await handleTopicsList(ctx, token, chatId, messageThreadId);
+            break;
+        case "remove":
+            await handleTopicsRemove(ctx, token, chatId, rest.join(" "), messageThreadId);
+            break;
+        case "clear":
+            await handleTopicsClear(ctx, token, chatId, messageThreadId);
+            break;
+        default:
+            await sendTopicsUsage(ctx, token, chatId, messageThreadId);
+    }
+}
+async function handleTopicsList(ctx, token, chatId, messageThreadId) {
+    const topicMap = await getTopicMap(ctx, chatId);
+    const entries = Object.entries(topicMap);
+    if (entries.length === 0) {
+        await sendMessage(ctx, token, chatId, "No topic mappings found for this chat.", { messageThreadId });
+        return;
+    }
+    const lines = [
+        escapeMarkdownV2("🧭") + " *Topic mappings*",
+        "",
+        ...entries.map(([key, value]) => {
+            const mapping = normalizeTopicMapping(key, value);
+            return `• ${escapeMarkdownV2(mapping.projectName)} ${escapeMarkdownV2("→")} ${escapeMarkdownV2(mapping.topicId)}`;
+        }),
+    ];
+    await sendMessage(ctx, token, chatId, lines.join("\n"), {
+        parseMode: "MarkdownV2",
+        messageThreadId,
+    });
+}
+async function handleTopicsRemove(ctx, token, chatId, projectName, messageThreadId) {
+    const input = projectName.trim();
+    if (!input) {
+        await sendMessage(ctx, token, chatId, "Usage: /topics remove <project\\-name>", {
+            parseMode: "MarkdownV2",
+            messageThreadId,
+        });
+        return;
+    }
+    const topicMap = await getTopicMap(ctx, chatId);
+    const key = findTopicMapKey(topicMap, input);
+    if (!key) {
+        await sendMessage(ctx, token, chatId, `No topic mapping found for "${input}".`, { messageThreadId });
+        return;
+    }
+    const mapping = normalizeTopicMapping(key, topicMap[key]);
+    delete topicMap[key];
+    await setTopicMap(ctx, chatId, topicMap);
+    await sendMessage(ctx, token, chatId, `${escapeMarkdownV2("🗑️")} ${escapeMarkdownV2(`Removed topic mapping for "${mapping.projectName}".`)}`, { parseMode: "MarkdownV2", messageThreadId });
+}
+async function handleTopicsClear(ctx, token, chatId, messageThreadId) {
+    await setTopicMap(ctx, chatId, {});
+    await sendMessage(ctx, token, chatId, "Cleared all topic mappings for this chat.", { messageThreadId });
+}
+async function sendTopicsUsage(ctx, token, chatId, messageThreadId) {
+    await sendMessage(ctx, token, chatId, [
+        escapeMarkdownV2("🧭") + " *Topic Commands*",
+        "",
+        `/topics list \\- ${escapeMarkdownV2("Show mappings for this chat")}`,
+        `/topics remove <project\\-name> \\- ${escapeMarkdownV2("Remove one mapping")}`,
+        `/topics clear \\- ${escapeMarkdownV2("Remove all mappings for this chat")}`,
+    ].join("\n"), { parseMode: "MarkdownV2", messageThreadId });
+}
+async function resolveProjectByName(ctx, companyId, projectName) {
+    const input = projectName.trim();
+    if (!input)
+        return undefined;
+    const projects = await ctx.projects.list({ companyId, limit: 100 });
+    return projects.find((project) => project.id === input)
+        ?? projects.find((project) => project.name === input)
+        ?? projects.find((project) => project.name?.toLowerCase() === input.toLowerCase());
+}
+async function sendProjectNotFoundMessage(ctx, token, chatId, companyId, projectName, messageThreadId) {
+    try {
+        const projects = await ctx.projects.list({ companyId, limit: 100 });
+        const names = projects.map((project) => project.name || project.id).filter(Boolean).join(", ");
+        await sendMessage(ctx, token, chatId, `Project "${projectName.trim()}" not found. Available: ${names || "none"}`, { messageThreadId });
+    }
+    catch {
+        await sendMessage(ctx, token, chatId, `Project "${projectName.trim()}" not found.`, { messageThreadId });
+    }
+}
+async function getTopicMap(ctx, chatId) {
+    const existing = await ctx.state.get({
+        scopeKind: "instance",
+        stateKey: `topic-map-${chatId}`,
+    });
+    if (!existing || typeof existing !== "object" || Array.isArray(existing))
+        return {};
+    return existing;
+}
+async function setTopicMap(ctx, chatId, topicMap) {
+    await ctx.state.set({ scopeKind: "instance", stateKey: `topic-map-${chatId}` }, topicMap);
+}
+function findTopicMapKey(topicMap, projectName) {
+    const input = projectName.trim().toLowerCase();
+    if (!input)
+        return undefined;
+    return Object.entries(topicMap).find(([key, value]) => {
+        const mapping = normalizeTopicMapping(key, value);
+        return key.toLowerCase() === input
+            || mapping.projectName.toLowerCase() === input
+            || mapping.projectId?.toLowerCase() === input;
+    })?.[0];
+}
+function normalizeTopicMapping(projectName, value) {
+    if (typeof value === "string") {
+        return { projectName, topicId: value };
+    }
+    return {
+        projectId: value.projectId,
+        projectName: value.projectName || projectName,
+        topicId: String(value.topicId),
+    };
+}
+export async function getTopicForProject(ctx, chatId, projectName) {
+    if (!projectName)
+        return undefined;
+    const topicMap = await getTopicMap(ctx, chatId);
+    const key = findTopicMapKey(topicMap, projectName);
+    if (!key)
+        return undefined;
+    const mapping = normalizeTopicMapping(key, topicMap[key]);
+    return Number(mapping.topicId);
+}
+async function getProjectNameForTopic(ctx, chatId, messageThreadId) {
+    if (!messageThreadId)
+        return undefined;
+    const topicMap = (await ctx.state.get({
+        scopeKind: "instance",
+        stateKey: `topic-map-${chatId}`,
+    }));
+    if (!topicMap)
+        return undefined;
+    const topicId = String(messageThreadId);
+    const match = Object.entries(topicMap).find(([, mappedTopicId]) => mappedTopicId === topicId);
+    return match?.[0];
+}
+async function resolveProjectIdForTopic(ctx, chatId, companyId, messageThreadId) {
+    const projectName = await getProjectNameForTopic(ctx, chatId, messageThreadId);
+    if (!projectName)
+        return undefined;
+    try {
+        const projects = await ctx.projects.list({ companyId, limit: 100 });
+        const exactMatch = projects.find((project) => project.name === projectName);
+        if (exactMatch)
+            return exactMatch.id;
+        return projects.find((project) => project.name?.toLowerCase() === projectName.toLowerCase())?.id;
+    }
+    catch {
+        return undefined;
+    }
+}
+export async function resolveNotificationThreadId(ctx, chatId, event, topicRouting) {
+    if (!topicRouting)
+        return undefined;
+    const projectName = await resolveEventProjectName(ctx, event);
+    return getTopicForProject(ctx, chatId, projectName);
+}
+async function resolveEventProjectName(ctx, event) {
+    const payload = event.payload;
+    const payloadProjectName = payload.projectName ? str(payload.projectName) : undefined;
+    if (payloadProjectName)
+        return payloadProjectName;
+    const payloadProjectId = payload.projectId ? str(payload.projectId) : undefined;
+    if (payloadProjectId) {
+        try {
+            const project = await ctx.projects.get(payloadProjectId, event.companyId);
+            if (project?.name)
+                return project.name;
+        }
+        catch {
+            return undefined;
+        }
+    }
+    if (event.entityType !== "issue" || !event.entityId)
+        return undefined;
+    try {
+        const issue = await ctx.issues.get(event.entityId, event.companyId);
+        if (!issue?.projectId)
+            return undefined;
+        const project = await ctx.projects.get(issue.projectId, event.companyId);
+        return project?.name;
+    }
+    catch {
+        return undefined;
+    }
+}
+async function resolveCompanyId(ctx, chatId) {
+    const mapping = await ctx.state.get({
+        scopeKind: "instance",
+        stateKey: `chat_${chatId}`,
+    });
+    const companyId = mapping?.companyId ?? mapping?.companyName;
+    if (!companyId) {
+        throw new Error("This chat is not linked to a Paperclip company. Use /connect first.");
+    }
+    return companyId;
+}

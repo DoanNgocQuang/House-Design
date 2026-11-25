@@ -11,7 +11,7 @@ import { queryKeys } from "@/lib/queryKeys";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const fixture = vi.hoisted(() => ({ attention: vi.fn(), summary: vi.fn(), openNewIssue: vi.fn(), pathname: "/COO/issues", search: "", collapsed: false, userId: "reviewer" as string | null, chats: [] as Array<{ isUnreadForMe: boolean }>,
-  recentTasks: [] as Array<Record<string, unknown>>, projects: [] as Array<Record<string, unknown>>, projectTasks: vi.fn(), enableCases: false, agents: [] as Agent[] }));
+  recentTasks: [] as Array<Record<string, unknown>>, projects: [] as Array<Record<string, unknown>>, projectTasks: vi.fn(), enableCases: false, agents: [] as Agent[], pluginContributions: vi.fn() }));
 vi.mock("@/hooks/useCoordinatorWorkspaceEnabled", () => ({ useCoordinatorWorkspaceEnabled: () => ({ enabled: true, userId: fixture.userId }) }));
 vi.mock("@/hooks/useAgentChatNavigation", () => ({ useAgentChatNavigation: () => ({
   companyId: "company", userId: fixture.userId, agents: { data: fixture.agents }, chats: { data: fixture.chats }, session: { isSuccess: true },
@@ -28,8 +28,10 @@ vi.mock("@/context/SidebarContext", () => ({ useSidebar: () => ({ collapsed: fix
 vi.mock("@/api/attention", () => ({ attentionApi: { list: fixture.attention, summary: fixture.summary } }));
 vi.mock("@/api/instanceSettings", () => ({ instanceSettingsApi: { getExperimental: async () => ({ enableCases: fixture.enableCases }) } }));
 vi.mock("@/api/projects", () => ({ projectsApi: { list: async () => fixture.projects } }));
+vi.mock("@/api/plugins", () => ({ pluginsApi: { listUiContributions: fixture.pluginContributions } }));
 vi.mock("./SidebarCompanyMenu", () => ({ SidebarCompanyMenu: () => null }));
 vi.mock("@/lib/router", () => ({
+  useActiveCompanyPrefix: () => "COO",
   useLocation: () => ({ pathname: fixture.pathname, search: fixture.search }),
   Link: ({ to, children, ...props }: { to: string; children: ReactNode }) => <a href={to} {...props}>{children}</a>,
   NavLink: ({ to, children, className, state: _state, end: _end, ...props }: {
@@ -53,12 +55,39 @@ let root: Root, container: HTMLDivElement, client: QueryClient;
 beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear(); fixture.collapsed = false; fixture.userId = "reviewer"; fixture.pathname = "/COO/issues"; fixture.search = "";
   fixture.chats = []; fixture.recentTasks = []; fixture.projects = []; fixture.enableCases = false; fixture.agents = [];
+  fixture.pluginContributions.mockResolvedValue([]);
   fixture.summary.mockResolvedValue(summary([pending("question"), pending("review")]));
   container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });
 
+it("opens Agent Office in a new tab when the plugin contributes its page", async () => {
+  fixture.pluginContributions.mockResolvedValue([{ slots: [
+    { type: "page", routePath: "agent-chat-rooms" },
+    { type: "page", routePath: "agent-pixels" },
+  ] }]);
+  await renderSidebar();
+  const link = await vi.waitFor(() => {
+    const item = container.querySelector<HTMLAnchorElement>('a[href="/COO/agent-pixels"]');
+    expect(item?.textContent).toBe("Agent Office");
+    return item!;
+  });
+  expect(link.target).toBe("_blank");
+  expect(link.relList.contains("noopener")).toBe(true);
+});
+
 describe("Coordinator task creation", () => {
+  it("puts Recent entries inside the focusable workspace scroll area", async () => {
+    fixture.recentTasks = [{ id: "recent", companyId: "company", identifier: "TASK-1", title: "Recent task", status: "todo", recordedAt: 1, parentId: null, subtaskCount: 0 }];
+    await renderSidebar();
+    const nav = container.querySelector<HTMLElement>('nav[aria-label="Workspace navigation"]')!;
+    expect(nav.tabIndex).toBe(0);
+    const recentList = nav.querySelector('[role="region"][aria-label="Recents"]');
+    expect(recentList).not.toBeNull();
+    expect(recentList?.classList.contains("scrollbar-while-scrolling")).toBe(false);
+    expect(nav.querySelector('button[aria-label="More workspace pages"]')).not.toBeNull();
+  });
+
   it("shows every task once in a four-level recent chain", async () => {
     fixture.recentTasks = ["a", "b", "c", "d"].map((id, index) => ({
       id, companyId: "company", identifier: `TASK-${id}`, title: `Task ${id}`, status: "todo", recordedAt: index,
@@ -211,7 +240,7 @@ describe("Coordinator pinned pages", () => {
     const saved = ["agent-chat:company:cto", "agent-chat:another-company:hidden", "/artifacts", "/dashboard"];
     localStorage.setItem("paperclip.coordinator.pinned-nav.v1:reviewer", JSON.stringify(saved));
     await renderSidebar();
-    const links = [...navigation().querySelectorAll<HTMLAnchorElement>("a")].slice(3);
+    const links = [...navigation().querySelectorAll<HTMLAnchorElement>("a")].slice(4); // sau 4 muc co dinh (Chat, Tasks, Inbox, Agent Stats)
     expect(links.map(link => link.textContent)).toEqual(["CTO", "Artifacts", "Dashboard"]);
     const more = navigation().querySelector('button[aria-label="More workspace pages"]')!;
     expect(links.at(-1)!.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
@@ -311,7 +340,7 @@ describe("Coordinator pinned pages", () => {
     localStorage.setItem("paperclip.coordinator.pinned-nav.v1:reviewer", JSON.stringify(["/routines", "/projects", "/unknown", "https://example.com"]));
     await renderSidebar();
     expect(Array.from(navigation().querySelectorAll("a")).map(link => link.getAttribute("href")))
-      .toEqual(["/chats", "/issues", "/decisions", "/routines", "/projects"]);
+      .toEqual(["/chats", "/issues", "/decisions", "/agent-stats", "/routines", "/projects"]);
     fixture.userId = "other-user";
     await renderSidebar();
     expect(pinnedPage("/projects")).toBeNull();

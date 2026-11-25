@@ -4,6 +4,7 @@
 .pnpm-store
 node_modules
 **/node_modules
+integrations/workspace-plugins/dist
 coverage
 data
 tmp

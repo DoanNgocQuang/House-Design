@@ -1,5 +1,4 @@
 import { TextAttachmentContext } from "@/context/TextAttachmentContext";
-import { isTextAttachment } from "@/lib/issue-attachments";
 import { getAttachmentArtifactWorkProductMetadata } from "@paperclipai/shared";
 import { useContext, useState, type CSSProperties } from "react";
 import { IssueGalleryContext } from "@/context/IssueGalleryContext";
@@ -7,7 +6,7 @@ import { ArtifactPreview } from "@/components/artifacts/ArtifactCard";
 import { MediaArtifactCard } from "@/components/artifacts/MediaArtifactCard";
 import { ImageGalleryModal } from "@/components/ImageGalleryModal";
 import { isImageLikeOutput, isVideoLikeOutput } from "@/lib/issue-output";
-import { attachmentDownloadPath } from "@/lib/issue-attachments";
+import { attachmentDownloadPath, opensInTaskPanel } from "@/lib/issue-attachments";
 import type { IssueWorkProduct } from "@paperclipai/shared";
 import {
   ChevronDown,
@@ -192,7 +191,7 @@ export function RichWorkProductCard({ workProduct, href, variant = "card" }: Ric
 
   const openText = useContext(TextAttachmentContext);
   const textMetadata = getAttachmentArtifactWorkProductMetadata(workProduct);
-  const canOpenText = Boolean(openText && textMetadata && isTextAttachment(textMetadata));
+  const canOpenText = Boolean(openText && textMetadata && opensInTaskPanel(textMetadata));
   const additions = numberMeta(metadata, "additions");
   const deletions = numberMeta(metadata, "deletions");
   const files = numberMeta(metadata, "files", "changedFiles");

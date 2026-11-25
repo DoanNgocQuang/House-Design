@@ -7,9 +7,28 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TaskAttachmentPanel, TextAttachmentPreview, readTextPreview, TEXT_PREVIEW_MAX_BYTES } from "./TaskAttachmentPanel";
 import { isTextAttachment } from "@/lib/issue-attachments";
 import { readTaskSidePanelState, taskPanelAttachmentTab, writeTaskSidePanelState } from "@/lib/task-side-panel-state";
+vi.mock("@/components/ModelAttachmentPreview", () => ({ default: () => <div data-model-viewer>3d-viewer</div> }));
 vi.mock("@/components/MarkdownBody", () => ({ MarkdownBody: ({ children }: { children: string }) => <article data-rendered>{children}</article> }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => { window.localStorage.clear(); vi.unstubAllGlobals(); });
+
+describe("3D model attachments", () => {
+  it("opens .glb files in the 3D viewer without fetching their content as text", async () => {
+    const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
+    const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+    client.setQueryData(queryKeys.issues.attachments("task"), [
+      { id: "glb", originalFilename: "MODEL.GLB", contentType: "application/octet-stream", byteSize: 900_000, contentPath: "/api/attachments/glb/content" },
+      { id: "svg", originalFilename: "plan.svg", contentType: "image/svg+xml", byteSize: 5_000, contentPath: "/api/attachments/svg/content" },
+    ]);
+    const host = document.createElement("div"); const root = createRoot(host);
+    await act(async () => { root.render(<QueryClientProvider client={client}><TaskAttachmentPanel issueId="task" attachmentId="glb" /></QueryClientProvider>); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(host.querySelector("[data-model-viewer]")).not.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => { root.render(<QueryClientProvider client={client}><TaskAttachmentPanel issueId="task" attachmentId="svg" /></QueryClientProvider>); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(host.querySelector("[data-model-viewer]")).toBeNull();
+    await act(async () => root.unmount()); client.clear();
+  });
+});
 
 describe("text attachment tabs", () => {
   it("does not fetch missing or oversized attachments and offers download for oversized files", async () => {

@@ -39,10 +39,16 @@ const pageSize = 200;
 
 /** Coordinator's existing IA and attention feed, rendered with the production
  * components reviewed in Design proposals / Pages / Tasks. */
-export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = {}) {
-  const { selectedCompanyId: companyId } = useCompany();
+export function CoordinatorTasks({ viewControl, project }: {
+  viewControl?: ReactNode;
+  project?: { id: string; name: string; companyId: string };
+} = {}) {
+  const { selectedCompanyId } = useCompany();
+  const companyId = project?.companyId ?? selectedCompanyId;
+  const projectId = project?.id;
   const { userId, loaded: identitySettled } = useCoordinatorWorkspaceEnabled();
   const { openNewIssue } = useDialogActions();
+  const openTask = () => openNewIssue(projectId ? { projectId } : undefined);
   const { setBreadcrumbs } = useBreadcrumbs();
   const client = useQueryClient();
   const listRef = useRef<HTMLElement>(null);
@@ -54,7 +60,7 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
   const urlStatuses = JSON.stringify(params.getAll("status"));
   const urlLabels = JSON.stringify(params.getAll("label").filter(Boolean));
   const urlView = params.get("view");
-  const viewStorageKey = taskListViewStorageKey("coordinator", userId ?? "local-board");
+  const viewStorageKey = taskListViewStorageKey(projectId ? `coordinator-project:${projectId}` : "coordinator", userId ?? "local-board");
   const [preference, setPreference] = useState(() => ({ key: viewStorageKey, view: loadTaskListView(viewStorageKey) }));
   const savedView = preference.key === viewStorageKey ? preference.view : loadTaskListView(viewStorageKey);
   const explicitView = urlView === "needs_attention" ? "blocked" : taskListViews.find(option => option.value === urlView)?.value;
@@ -112,13 +118,13 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
     next.set("view", nextView === "blocked" ? "needs_attention" : nextView);
     return next;
   });
-  useEffect(() => { setBreadcrumbs([{ label: "Tasks" }]); }, [setBreadcrumbs]);
+  useEffect(() => { if (!projectId) setBreadcrumbs([{ label: "Tasks" }]); }, [projectId, setBreadcrumbs]);
 
   const tasks = useInfiniteQuery({
-    queryKey: [...queryKeys.issues.list(companyId!), "coordinator-table", "index", userId, deferredQuery, participantAgentId, workspaceIds, originKind, serverSortField, serverSortDir, includeBlockedBy, view === "unread"],
+    queryKey: [...queryKeys.issues.list(companyId!), "coordinator-table", "index", projectId, userId, deferredQuery, participantAgentId, workspaceIds, originKind, serverSortField, serverSortDir, includeBlockedBy, view === "unread"],
     queryFn: async ({ pageParam, signal }) => {
       const pages = await Promise.all((workspaceIds.length ? workspaceIds : [undefined]).map(workspaceId => issuesApi.listCompact(companyId!, {
-      projection: "index", limit: pageSize, offset: pageParam, includeAgentCreatedTasks: true, includeRoutineExecutions: true,
+      projection: "index", projectId, limit: pageSize, offset: pageParam, includeAgentCreatedTasks: true, includeRoutineExecutions: true,
       sortField: serverSortField, sortDir: serverSortDir,
       includeBlockedBy: includeBlockedBy || undefined, q: deferredQuery || undefined, participantAgentId, workspaceId, originKind,
       unreadForUserId: view === "unread" ? "me" : undefined,
@@ -136,13 +142,13 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
   const attentionIds = needsAttention ? attention.data?.taskIds ?? [] : [];
   const attentionBatches = Array.from({ length: Math.ceil(attentionIds.length / 100) }, (_, index) => attentionIds.slice(index * 100, (index + 1) * 100));
   const attentionTasks = useQueries({ queries: attentionBatches.map(ids => ({
-    queryKey: [...queryKeys.issues.list(companyId!), "coordinator-attention-index", userId, participantAgentId, deferredQuery, originKind, includeBlockedBy, ids],
+    queryKey: [...queryKeys.issues.list(companyId!), "coordinator-attention-index", projectId, userId, participantAgentId, deferredQuery, originKind, includeBlockedBy, ids],
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
       const rows = await issuesApi.listCompact(companyId!, {
-        ids, projection: "index", limit: 100, q: deferredQuery || undefined, participantAgentId, originKind, includeBlockedBy: includeBlockedBy || undefined,
+        ids, projection: "index", projectId, limit: 100, q: deferredQuery || undefined, participantAgentId, originKind, includeBlockedBy: includeBlockedBy || undefined,
         includeAgentCreatedTasks: true, includeRoutineExecutions: true,
       }, { signal });
-      if (!deferredQuery && !participantAgentId && !originKind && ids.some(id => !rows.some(row => row.id === id))) {
+      if (!projectId && !deferredQuery && !participantAgentId && !originKind && ids.some(id => !rows.some(row => row.id === id))) {
         throw new Error("Some tasks with pending decisions couldn’t load.");
       }
       return rows;
@@ -164,7 +170,7 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
   const parentIds = view === "unread" ? [...new Set(records.flatMap(issue =>
     issue.parentId && !unreadIds.has(issue.parentId) ? [issue.parentId] : []))].sort() : [];
   const parentContext = useQuery({
-    queryKey: [...queryKeys.issues.list(companyId!), "coordinator-unread-ancestors", userId, parentIds],
+    queryKey: [...queryKeys.issues.list(companyId!), "coordinator-unread-ancestors", projectId, userId, parentIds],
     enabled: !!companyId && parentIds.length > 0,
     queryFn: async ({ signal }) => {
       const parents: Issue[] = [];
@@ -175,7 +181,7 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
         const rows: Issue[] = [];
         for (let offset = 0; offset < ids.length; offset += 100) {
           rows.push(...await issuesApi.listCompact(companyId!, {
-            ids: ids.slice(offset, offset + 100), projection: "index", limit: 100,
+            ids: ids.slice(offset, offset + 100), projection: "index", projectId, limit: 100,
             includeAgentCreatedTasks: true, includeRoutineExecutions: true,
           }, { signal }) as Issue[]);
         }
@@ -185,8 +191,9 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
       return parents;
     },
   });
-  const recordsWithContext = [...records, ...(view === "unread" ? parentContext.data ?? [] : [])];
-  const scopedRecords = needsAttention && workspaceIds.length ? records.filter(issue =>
+  const inProject = (issue: Issue) => !projectId || issue.projectId === projectId;
+  const recordsWithContext = [...records, ...(view === "unread" ? parentContext.data ?? [] : [])].filter(inProject);
+  const scopedRecords = needsAttention && workspaceIds.length ? recordsWithContext.filter(issue =>
     workspaceIds.includes(issue.executionWorkspaceId ?? "") || workspaceIds.includes(issue.projectWorkspaceId ?? "")) : recordsWithContext;
   const items: TaskListItem[] = [...new Map(scopedRecords.map(issue => [issue.id, issue])).values()].map(issue => ({
     issue: { ...issue, project: issue.project ?? projectById.get(issue.projectId ?? "") },
@@ -265,10 +272,10 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
   const enrichItem = (item: TaskListItem): TaskListItem => ({ ...item, issue: enrichIssueRow(item.issue) });
   const narrowed = query || collection.activeFilterCount || view === "inbox" || view === "unread";
   const empty = <EmptyState icon={narrowed ? SearchX : ListChecks}
-    message={narrowed ? "No tasks match this view" : needsAttention ? "No tasks need a decision." : "No tasks in this organization"}
+    message={narrowed ? "No tasks match this view" : needsAttention ? "No tasks need a decision." : projectId ? "No tasks in this project" : "No tasks in this organization"}
     action={narrowed ? "Clear filters" : needsAttention ? undefined : "New Task"}
-    onAction={narrowed ? clearFilters : () => openNewIssue()} />;
-  const issueLinkState = createIssueDetailLocationState("Tasks", `${location.pathname}${location.search}`, "issues");
+    onAction={narrowed ? clearFilters : openTask} />;
+  const issueLinkState = createIssueDetailLocationState(project?.name ?? "Tasks", `${location.pathname}${location.search}`, "issues");
   const retry = () => {
     update.reset();
     void (needsAttention ? attention.refetch() : tasks.refetch());
@@ -282,16 +289,16 @@ export function CoordinatorTasks({ viewControl }: { viewControl?: ReactNode } = 
   return <FlyoutAppearanceProvider><TruncatedTextMarqueeProvider><section ref={listRef} className="coordinator-task-list task-row-design-preview flex min-w-0 flex-col gap-8" aria-label="Tasks">
     <TaskListToolbar view={view} onViewChange={setView} viewControl={viewControl}
       query={collection.query} onQueryChange={collection.setQuery} layout={collection.layout} onLayoutChange={collection.setLayout}
-      allExpanded={collection.allExpanded} onToggleExpanded={collection.toggleExpanded} onNewTask={() => openNewIssue()}
+      allExpanded={collection.allExpanded} onToggleExpanded={collection.toggleExpanded} onNewTask={openTask}
       filters={{ enableRoutineTasksFilter: true, state: collection.filters, onChange: updateFilters, activeFilterCount: collection.activeFilterCount,
-        agents: agents.data ?? [], projects: projects.data ?? [], labels: labels.data ?? [], currentUserId: userId, creators: collection.creators }} />
+        agents: agents.data ?? [], projects: projectId ? (projects.data ?? []).filter(item => item.id === projectId) : projects.data ?? [], labels: labels.data ?? [], currentUserId: userId, creators: collection.creators }} />
     {error ? <div role="alert" className="flex items-center gap-2 text-sm text-destructive"><span>{error instanceof Error ? error.message : "Could not load tasks"}</span><Button variant="outline" size="sm" onClick={retry}>Retry</Button></div> : null}
     {rowDetailsError ? <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><span>Task details couldn’t load.</span><Button variant="ghost" size="sm" onClick={() => void retryRowDetails()}>Retry</Button></div> : null}
     {pending ? <p role="status" className="text-sm text-muted-foreground">Loading tasks…</p> : !error && <>
       <div hidden={collection.layout !== "list"} className="design-task-list-panel">{collection.matchingItems.length ? <TaskList key={companyId}
         items={(needsAttention ? collection.matchingItems : collection.visibleItems).map(enrichItem)} allItems={collection.companyItems.map(enrichItem)}
         preferenceLocation={userId ? { companyId, collectionKey: `coordinator-tasks:${userId}` } : undefined}
-        collectionKey={JSON.stringify([companyId, userId, needsAttention, deferredQuery, participantAgentId, workspaceIds, collection.view, collection.filters])}
+        collectionKey={JSON.stringify([companyId, projectId, userId, needsAttention, deferredQuery, participantAgentId, workspaceIds, collection.view, collection.filters])}
         sort={sort} onSortChange={setSort} preloadCompanyId={collection.layout === "list" ? companyId : null}
         issueLinkState={issueLinkState} collapsedIds={collection.collapsedIds} onCollapsedIdsChange={collection.setCollapsedIds} /> : empty}</div>
       {collection.layout === "board" ? collection.matchingItems.length

@@ -5,7 +5,7 @@ import { useCoordinatorPresentation } from "@/components/coordinator/Coordinator
 import { TextAttachmentContext } from "@/context/TextAttachmentContext";
 import { useArtifactsV1Enabled } from "@/hooks/useArtifactsV1Enabled";
 import { ArtifactRow, ArtifactRowGroup, inlineRowStyle, subjectFromAttachmentRef } from "@/components/artifacts/v1";
-import { isTextAttachment } from "@/lib/issue-attachments";
+import { opensInTaskPanel } from "@/lib/issue-attachments";
 import { ArtifactPreview } from "@/components/artifacts/ArtifactCard";
 import { isVideoLikeOutput } from "@/lib/issue-output";
 import { AgentAvatar, type AvatarAgent } from "../AgentAvatar";
@@ -374,7 +374,7 @@ function TaskChatBubbleContent({
                       <a
                         href={ref.openPath ?? ref.url}
                         onClick={(event) => {
-                          if (openText && ref.id && isTextAttachment({ contentType: ref.contentType ?? "", originalFilename: ref.name }) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+                          if (openText && ref.id && opensInTaskPanel({ contentType: ref.contentType ?? "", originalFilename: ref.name }) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
                             event.preventDefault(); openText(ref.id, ref.name);
                           }
                         }}
@@ -480,7 +480,7 @@ function TaskChatBubbleContent({
             {[...imageRefs, ...attachmentRefs].map((ref) => {
               const subject = subjectFromAttachmentRef(ref);
               const picture = isImageAttachment(ref) || isVideoLikeOutput(ref.contentType, ref.name);
-              const textTab = Boolean(openText && ref.id && isTextAttachment({ contentType: ref.contentType ?? "", originalFilename: ref.name }));
+              const textTab = Boolean(openText && ref.id && opensInTaskPanel({ contentType: ref.contentType ?? "", originalFilename: ref.name }));
               if (picture) return <ArtifactRow key={ref.url} subject={subject} onClick={() => openImage(ref.url)} style={inlineRowStyle} />;
               // A text file keeps its link (modifier clicks, copying the address) while a plain click opens the text tab.
               if (textTab) return <ArtifactRow key={ref.url} subject={subject} href={ref.openPath ?? ref.url} external onClick={() => openText?.(ref.id!, ref.name)} style={inlineRowStyle} />;

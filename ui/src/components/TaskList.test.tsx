@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createIssue } from "../../storybook/fixtures/paperclipData";
 import { TaskList, type TaskListItem } from "./TaskList";
 import { TooltipProvider } from "./ui/tooltip";
+import { taskCollectionPreferencesStorageKey } from "../lib/task-collection-preferences";
 import { readTaskListSortParams } from "../lib/task-list";
 
 vi.mock("./IssueRow", () => ({ IssueRow: ({ issue, leadingControl }: { issue: { id: string; title: string }; leadingControl?: ReactNode }) =>
@@ -25,6 +26,20 @@ describe("TaskList progressive rendering", () => {
   async function more() {
     await act(async () => Array.from(host.querySelectorAll("button")).find(b => b.textContent === "Show more tasks")!.click());
   }
+  it("ignores the deleted Labels column in saved project and company views", async () => {
+    const location = { companyId: "company", collectionKey: "coordinator-tasks:person" };
+    const key = taskCollectionPreferencesStorageKey(location);
+    localStorage.setItem(key, JSON.stringify({ version: 1, ...location,
+      columns: ["task", "tags", "storyPoints"], viewState: { order: ["tags", "task", "storyPoints"] },
+    }));
+    try {
+      await act(async () => root.render(<TooltipProvider><TaskList items={tasks(1)} preferenceLocation={location} /></TooltipProvider>));
+      expect(host.textContent).toContain("Story Points");
+      expect(host.textContent).not.toContain("Labels");
+    } finally {
+      localStorage.removeItem(key);
+    }
+  });
   it.each([false, true])("defaults to newest updates while keeping children after their parent (controlled=%s)", async controlled => {
     const items = [
       { issue: createIssue({ id: "child-older", parentId: "parent", updatedAt: new Date(4000) }) },
@@ -40,7 +55,7 @@ describe("TaskList progressive rendering", () => {
   });
   it("highlights Last updated only after selection and returns to the unhighlighted default when reset", async () => {
     const items = tasks(2).reverse();
-    await render(items);
+    await act(async () => root.render(<TooltipProvider><TaskList items={items} initialColumns={["task", "lastUpdated"]} /></TooltipProvider>));
     const orderedIds = () => [...rows()].map(row => row.getAttribute("data-issue-row-details"));
     expect(orderedIds()).toEqual(["task-0", "task-1"]);
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Last updated: sort ascending"]')!.click());

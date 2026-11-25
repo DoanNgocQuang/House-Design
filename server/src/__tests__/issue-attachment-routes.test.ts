@@ -572,6 +572,19 @@ describe("issue attachment routes", () => {
     expect(res.headers["content-disposition"]).toBe('attachment; filename="notes.md"');
   });
 
+  it("shows an SVG drawing as a PNG, and refuses other files", async () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="9" height="9"/></svg>');
+    const app = await createApp(createStorageService(svg));
+    mockIssueService.getAttachmentById.mockResolvedValue({ ...makeAttachment("image/svg+xml", "plan.svg"), byteSize: svg.length });
+    const png = await request(app).get("/api/attachments/attachment-1/content?as=png").buffer(true).parse(parseBinaryResponse);
+    expect(png.status).toBe(200);
+    expect(png.headers["content-type"]).toBe("image/png");
+    expect(png.body.subarray(1, 4).toString()).toBe("PNG");
+
+    mockIssueService.getAttachmentById.mockResolvedValue(makeAttachment("application/pdf", "a.pdf"));
+    expect((await request(app).get("/api/attachments/attachment-1/content?as=png")).status).toBe(422);
+  });
+
   it("keeps image attachments inline for previews", async () => {
     const storage = createStorageService();
     mockIssueService.getAttachmentById.mockResolvedValue(makeAttachment("image/png", "preview.png"));

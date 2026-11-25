@@ -244,14 +244,11 @@ async function validateAndResolveFetchUrl(urlString: string): Promise<ValidatedF
 function buildPinnedRequestOptions(
   target: ValidatedFetchTarget,
   init?: RequestInit,
-): { options: HttpRequestOptions & { servername?: string }; body: string | undefined } {
+  binaryBody?: Buffer,
+): { options: HttpRequestOptions & { servername?: string }; body: string | Buffer | undefined } {
   const headers = new Headers(init?.headers);
   const method = init?.method ?? "GET";
-  const body = init?.body === undefined || init?.body === null
-    ? undefined
-    : typeof init.body === "string"
-      ? init.body
-      : String(init.body);
+  const body = binaryBody ?? (init?.body == null ? undefined : String(init.body));
 
   headers.set("Host", target.hostHeader);
   if (body !== undefined && !headers.has("content-length") && !headers.has("transfer-encoding")) {
@@ -286,8 +283,9 @@ async function executePinnedHttpRequest(
   target: ValidatedFetchTarget,
   init: RequestInit | undefined,
   signal: AbortSignal,
+  binaryBody?: Buffer,
 ): Promise<{ status: number; statusText: string; headers: Record<string, string>; body: string }> {
-  const { options, body } = buildPinnedRequestOptions(target, init);
+  const { options, body } = buildPinnedRequestOptions(target, init, binaryBody);
 
   const response = await new Promise<IncomingMessage>((resolve, reject) => {
     const requestFn = target.useTls ? httpsRequest : httpRequest;
@@ -1796,6 +1794,27 @@ export function buildHostServices(
 
         try {
           const init = params.init as RequestInit | undefined;
+          const headers = new Headers(init?.headers);
+          if (headers.get("x-paperclip-telegram-multipart") === "base64") {
+            const encoded = init?.body;
+            if (pluginKey !== "paperclip-plugin-telegram"
+              || target.parsedUrl.origin !== "https://api.telegram.org"
+              || !/^\/bot[0-9]+:[A-Za-z0-9_-]+\/sendDocument$/.test(target.parsedUrl.pathname)
+              || init?.method !== "POST"
+              || !headers.get("content-type")?.startsWith("multipart/form-data; boundary=")
+              || typeof encoded !== "string"
+              || encoded.length > 14 * 1024 * 1024
+              || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)
+              || encoded.length % 4 !== 0) {
+              throw new Error("Invalid Telegram document upload");
+            }
+            const body = Buffer.from(encoded, "base64");
+            if (body.length > 10 * 1024 * 1024 + 8192) throw new Error("Telegram upload exceeds the byte limit");
+            headers.delete("x-paperclip-telegram-multipart");
+            headers.delete("content-length");
+            headers.delete("transfer-encoding");
+            return await executePinnedHttpRequest(target, { ...init, headers }, controller.signal, body);
+          }
           return await executePinnedHttpRequest(target, init, controller.signal);
         } finally {
           clearTimeout(timeout);

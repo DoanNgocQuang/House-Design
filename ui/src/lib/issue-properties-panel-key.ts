@@ -6,6 +6,7 @@ type IssuePropertiesPanelKeyIssue = Pick<
   | "status"
   | "displayStatus"
   | "priority"
+  | "storyPoints"
   | "assigneeAgentId"
   | "assigneeUserId"
   | "projectId"
@@ -39,6 +40,7 @@ export function buildIssuePropertiesPanelKey(
     status: issue.status,
     displayStatus: issue.displayStatus,
     priority: issue.priority,
+    storyPoints: issue.storyPoints ?? null,
     assigneeAgentId: issue.assigneeAgentId,
     assigneeUserId: issue.assigneeUserId,
     projectId: issue.projectId,

@@ -958,7 +958,7 @@ function SkillCard({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           {card.installed ? (
-            <Badge variant="secondary" className="text-(length:--text-nano)">
+            <Badge variant="secondary" data-skill-installed className="text-(length:--text-nano)">
               Installed
             </Badge>
           ) : null}

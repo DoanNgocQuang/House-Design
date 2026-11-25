@@ -10,6 +10,7 @@ const mockPluginsApi = vi.hoisted(() => ({
 }));
 
 const mockSetBreadcrumbs = vi.hoisted(() => vi.fn());
+const mockLoadContribution = vi.hoisted(() => vi.fn(async () => {}));
 const mockParams = vi.hoisted(() => ({
   companyPrefix: "PAP" as string | undefined,
   pluginId: undefined as string | undefined,
@@ -34,6 +35,8 @@ vi.mock("@/context/CompanyContext", () => ({
   }),
 }));
 
+vi.mock("@/components/ToastViewport", () => ({ ToastViewport: () => null }));
+
 vi.mock("@/lib/router", () => ({
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
   Navigate: () => null,
@@ -43,6 +46,7 @@ vi.mock("@/lib/router", () => ({
 vi.mock("@/plugins/slots", async () => {
   const actual = await vi.importActual<typeof import("@/plugins/slots")>("@/plugins/slots");
   return {
+    ensurePluginContributionLoaded: mockLoadContribution,
     resolveRouteSidebarSlot: actual.resolveRouteSidebarSlot,
     PluginSlotMount: ({ slot }: { slot: { displayName: string } }) => (
       <div data-testid="plugin-slot-mount">{slot.displayName}</div>
@@ -87,7 +91,7 @@ function pageContribution(overrides: Partial<{ slots: unknown[] }> = {}) {
   };
 }
 
-async function renderPage(container: HTMLDivElement) {
+async function renderPage(container: HTMLDivElement, standaloneRoute?: "agent-pixels") {
   const root = createRoot(container);
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -96,7 +100,7 @@ async function renderPage(container: HTMLDivElement) {
   await act(async () => {
     root.render(
       <QueryClientProvider client={queryClient}>
-        <PluginPage />
+        <PluginPage standaloneRoute={standaloneRoute} />
       </QueryClientProvider>,
     );
   });
@@ -123,6 +127,49 @@ describe("PluginPage", () => {
     vi.clearAllMocks();
   });
 
+  it("shows a standalone Agent Office and changes to night at 18:00 local time", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date(2026, 10, 19, 17, 59, 59));
+    mockPluginsApi.listUiContributions.mockResolvedValue([pageContribution({
+      slots: [{ type: "page", id: "agent-pixels-camera-page", displayName: "Agent Pixels", exportName: "AgentPixelsCameraPage", routePath: "agent-pixels" }],
+    })]);
+    const root = await renderPage(container, "agent-pixels");
+    try {
+      const office = container.querySelector('[aria-label="Agent Office"]');
+      expect(office?.getAttribute("data-lighting")).toBe("day");
+      expect(office?.querySelector("time")?.textContent).toBe("17:59:59");
+      expect(office?.querySelector('[data-testid="plugin-slot-mount"]')?.textContent).toBe("Agent Pixels");
+      expect(mockLoadContribution).toHaveBeenCalledOnce();
+      expect(container.textContent).not.toContain("Back");
+      await act(() => { vi.advanceTimersByTime(1000); });
+      expect(office?.getAttribute("data-lighting")).toBe("night");
+      expect(office?.querySelector("time")?.textContent).toBe("18:00:00");
+      const lighting = office?.querySelector<HTMLSelectElement>('select[aria-label="Lighting"]');
+      expect(lighting?.value).toBe("auto");
+      await act(() => {
+        lighting!.value = "day";
+        lighting!.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      expect(office?.getAttribute("data-lighting")).toBe("day");
+      await act(() => {
+        lighting!.value = "night";
+        lighting!.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      expect(office?.getAttribute("data-lighting")).toBe("night");
+      await act(() => {
+        lighting!.value = "auto";
+        lighting!.dispatchEvent(new Event("change", { bubbles: true }));
+        vi.setSystemTime(new Date(2026, 10, 20, 6));
+        vi.advanceTimersByTime(1000);
+      });
+      expect(office?.getAttribute("data-lighting")).toBe("day");
+    } finally {
+      await act(() => root.unmount());
+      vi.useRealTimers();
+      localStorage.removeItem("paperclip.agent-office.lighting");
+    }
+  });
+
   it("renders the breadcrumb and Back button on a legacy plugin route (no routeSidebar)", async () => {
     mockParams.pluginRoutePath = "wiki";
     mockPluginsApi.listUiContributions.mockResolvedValue([pageContribution()]);
@@ -139,6 +186,17 @@ describe("PluginPage", () => {
     await act(async () => {
       root.unmount();
     });
+  });
+
+  it("shows the Chat room page title instead of its Agent Pixels plugin name", async () => {
+    mockParams.pluginRoutePath = "agent-chat-rooms";
+    mockPluginsApi.listUiContributions.mockResolvedValue([{...pageContribution(), displayName: "Agent Pixels", slots: [{type: "page", id: "agent-chat-rooms", displayName: "Chat room", exportName: "AgentChatRoomsPage", routePath: "agent-chat-rooms"}]}]);
+    const root = await renderPage(container);
+    expect(mockSetBreadcrumbs).toHaveBeenCalledWith([
+      {label: "Plugins", href: "/company/settings/instance/plugins"},
+      {label: "Chat room"},
+    ]);
+    await act(async () => { root.unmount(); });
   });
 
   it("uses a route title and hides the Back button when a routeSidebar matches the active route", async () => {

@@ -1,0 +1,609 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "layout.json - mặt bằng có toạ độ (do Kiến trúc sư viết, house-builder đọc)",
+  "description": "Mét. x: chiều ngang lô đất (0 = mép trái nhìn từ đường). y: chiều sâu (0 = mặt tiền). Phòng đo theo tim tường. In mẫu bằng: python3 house_builder.py example",
+  "type": "object",
+  "required": [
+    "name",
+    "lot",
+    "floor_height",
+    "roof",
+    "floors"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "lot": {
+      "type": "object",
+      "required": [
+        "width",
+        "depth"
+      ],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "floor_height": {
+      "type": "number",
+      "minimum": 2.6,
+      "maximum": 4.5
+    },
+    "roof": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "flat",
+            "gable",
+            "hip",
+            "shed",
+            "mansard",
+            "tiered"
+          ],
+          "description": "mansard = mái Pháp hai độ dốc có cửa sổ mái; tiered = mái chồng 2 cấp (đình, Indochine)"
+        },
+        "pitch_deg": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 60
+        },
+        "overhang": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1.5
+        },
+        "slope_to": {
+          "enum": [
+            "front",
+            "back",
+            "left",
+            "right"
+          ],
+          "description": "Chỉ cho mái lệch (shed): phía nước chảy xuống, mặc định back"
+        },
+        "blocks": {
+          "type": "array",
+          "description": "Tự chia khối mái, mỗi khối một kiểu (trộn mái). Bỏ trống thì tự chia theo hình nhà",
+          "items": {
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "w",
+              "d"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "type": "number"
+              },
+              "d": {
+                "type": "number"
+              },
+              "type": {
+                "enum": [
+                  "flat",
+                  "gable",
+                  "hip",
+                  "shed",
+                  "mansard",
+                  "tiered"
+                ]
+              },
+              "pitch_deg": {
+                "type": "number"
+              },
+              "overhang": {
+                "type": "number"
+              },
+              "slope_to": {
+                "enum": [
+                  "front",
+                  "back",
+                  "left",
+                  "right"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "floors": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Phần tử đầu tiên là tầng 1",
+      "items": {
+        "type": "object",
+        "required": [
+          "rooms"
+        ],
+        "properties": {
+          "rooms": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "x",
+                "y",
+                "w",
+                "d"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Duy nhất trong tầng, không dấu"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "living",
+                    "kitchen",
+                    "dining",
+                    "bedroom",
+                    "wc",
+                    "garage",
+                    "stairs",
+                    "hall",
+                    "balcony",
+                    "worship",
+                    "laundry",
+                    "storage",
+                    "void",
+                    "porch",
+                    "other"
+                  ],
+                  "description": "void = giếng trời / ô thông tầng: không có sàn ở tầng trên, không có mái ở tầng trên cùng; porch = hiên / sảnh đón: cạnh ngoài để trống, có cột"
+                },
+                "x": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "d": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "up": {
+                  "enum": [
+                    "+y",
+                    "-y",
+                    "+x",
+                    "-x"
+                  ],
+                  "description": "Chỉ cho cầu thang: hướng đi lên. Bỏ trống thì đi lên theo cạnh dài, về phía y hoặc x lớn"
+                },
+                "shape": {
+                  "enum": [
+                    "straight",
+                    "L",
+                    "U"
+                  ],
+                  "description": "Chỉ cho cầu thang: thẳng, chữ L, chữ U (ô rộng >= 1.8m)"
+                },
+                "mirror": {
+                  "type": "boolean",
+                  "description": "Chỉ cho cầu thang chữ L/U: đổi bên vế đầu tiên"
+                },
+                "flight_width": {
+                  "type": "number",
+                  "description": "Chỉ cho cầu thang chữ L: bề rộng vế thang, mặc định 1.0m"
+                }
+              }
+            }
+          },
+          "openings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "room",
+                "side",
+                "offset",
+                "width"
+              ],
+              "properties": {
+                "room": {
+                  "type": "string",
+                  "description": "id phòng chứa cạnh có cửa"
+                },
+                "side": {
+                  "enum": [
+                    "front",
+                    "back",
+                    "left",
+                    "right"
+                  ],
+                  "description": "front: cạnh y nhỏ; back: cạnh y lớn; left: cạnh x nhỏ; right: cạnh x lớn"
+                },
+                "offset": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Khoảng cách từ đầu cạnh (phía x hoặc y nhỏ hơn)"
+                },
+                "width": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "kind": {
+                  "enum": [
+                    "door",
+                    "window",
+                    "glass-wall"
+                  ],
+                  "description": "glass-wall = vách kính từ sàn tới gần trần (đi qua được như cửa kính trượt)"
+                },
+                "sill": {
+                  "type": "number",
+                  "description": "Chỉ cho cửa sổ, mặc định 0.9"
+                },
+                "head": {
+                  "type": "number",
+                  "description": "Cao độ đỉnh cửa, mặc định 2.1"
+                }
+              }
+            }
+          },
+          "furniture": {
+            "type": "array",
+            "description": "Nội thất của tầng. Mã món đồ: python3 house_builder.py catalog. Toạ độ (x, y) là tâm món đồ; rotation 0 = mặt trước nhìn ra mặt tiền, 90 = nhìn sang phải (+x), theo chiều kim đồng hồ khi nhìn từ trên xuống.",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "item",
+                "room",
+                "x",
+                "y",
+                "rotation"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Duy nhất trong phòng, không dấu"
+                },
+                "item": {
+                  "type": "string",
+                  "description": "Mã trong catalog, ví dụ giuong-doi"
+                },
+                "room": {
+                  "type": "string",
+                  "description": "id phòng chứa món đồ"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "rotation": {
+                  "enum": [
+                    0,
+                    90,
+                    180,
+                    270
+                  ]
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "description": "Màu cho cả món (tuỳ chọn)"
+                }
+              }
+            }
+          },
+          "kind": {
+            "enum": [
+              "normal",
+              "basement",
+              "mezzanine"
+            ],
+            "description": "basement = tầng hầm (chỉ tầng đầu tiên); mezzanine = tầng lửng (mặc định cao 2.8m)"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 2.2,
+            "maximum": 8,
+            "description": "Chiều cao riêng của tầng này, mặc định floor_height"
+          },
+          "louvers": {
+            "type": "array",
+            "description": "Lam che nắng nhô ra ngoài một cạnh phòng",
+            "items": {
+              "type": "object",
+              "required": [
+                "room",
+                "side"
+              ],
+              "properties": {
+                "room": {
+                  "type": "string"
+                },
+                "side": {
+                  "enum": [
+                    "front",
+                    "back",
+                    "left",
+                    "right"
+                  ]
+                },
+                "offset": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number"
+                },
+                "kind": {
+                  "enum": [
+                    "vertical",
+                    "horizontal"
+                  ]
+                },
+                "from": {
+                  "type": "number"
+                },
+                "to": {
+                  "type": "number"
+                },
+                "depth": {
+                  "type": "number"
+                },
+                "spacing": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "colors": {
+      "type": "object",
+      "description": "Màu ghi đè (#rrggbb). Ưu tiên: parts[partId] > categories[loại] > màu mặc định. Nội thất không ghi đè thì giữ màu gốc của thư viện.",
+      "properties": {
+        "categories": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "floor",
+              "wall",
+              "door",
+              "glass",
+              "stairs",
+              "furniture",
+              "garden",
+              "fence",
+              "roof"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "parts": {
+          "type": "object",
+          "description": "partId -> màu. partId xem trong <ten-san-pham>.glb (extras.partId) hoặc comment 'Bảng màu' trên task",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "description": "Sân vườn, hàng rào, cổng, cây (tầng trệt). In mẫu: python3 house_builder.py example-site",
+      "properties": {
+        "fence": {
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 3,
+              "default": 1.6
+            },
+            "sides": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "front",
+                  "back",
+                  "left",
+                  "right"
+                ]
+              },
+              "description": "Cạnh lô đất có rào, mặc định cả 4"
+            },
+            "gates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "side",
+                  "offset",
+                  "width"
+                ],
+                "properties": {
+                  "side": {
+                    "enum": [
+                      "front",
+                      "back",
+                      "left",
+                      "right"
+                    ]
+                  },
+                  "offset": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "garden": {
+          "type": "array",
+          "description": "Khu sân vườn hình chữ nhật. lawn/paving là nền; path/flowerbed/pool được nằm trên nền. Không đè lên phòng tầng 1.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "type",
+              "x",
+              "y",
+              "w",
+              "d"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "lawn",
+                  "paving",
+                  "path",
+                  "flowerbed",
+                  "pool"
+                ]
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0
+              },
+              "w": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "d": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
+          }
+        },
+        "trees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "x",
+              "y"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "tree",
+                  "shrub"
+                ],
+                "default": "tree"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "facade": {
+      "type": "object",
+      "description": "Mặt tiền: phong cách quyết định kiểu lan can, gờ chỉ tầng, ô văng và màu khung cửa",
+      "properties": {
+        "style": {
+          "enum": [
+            "basic",
+            "modern",
+            "classic",
+            "indochine",
+            "minimal"
+          ]
+        },
+        "railing": {
+          "enum": [
+            "metal",
+            "glass",
+            "baluster",
+            "wall"
+          ],
+          "description": "Ghi đè kiểu lan can của phong cách"
+        },
+        "column": {
+          "enum": [
+            "square",
+            "steel",
+            "wood",
+            "stone-base",
+            "round"
+          ],
+          "description": "Kiểu cột hiên; mặc định theo style"
+        },
+        "band": {
+          "type": "boolean",
+          "description": "Gờ chỉ giữa các tầng"
+        },
+        "canopy": {
+          "type": "boolean",
+          "description": "Ô văng trên cửa sổ ngoài"
+        }
+      }
+    },
+    "plinth": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1.2,
+      "description": "Cốt nền: nhà cao hơn sân bao nhiêu mét, mặc định 0.45 (có bậc tam cấp, dốc gara)"
+    }
+  }
+}

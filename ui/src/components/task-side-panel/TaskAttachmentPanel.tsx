@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { issuesApi } from "@/api/issues";
@@ -14,8 +14,12 @@ import { FilePreviewModeToggle, type FilePreviewMode } from "@/components/FilePr
 import { isHtmlPreview } from "@/lib/html-preview";
 import { attachmentDownloadPath, isMarkdownAttachment, isTextAttachment } from "@/lib/issue-attachments";
 import { queryKeys } from "@/lib/queryKeys";
+import { isModelAttachment, MODEL_PREVIEW_MAX_BYTES } from "@/lib/model-preview";
 
 import { readTextPreview, TEXT_PREVIEW_MAX_BYTES } from "@/lib/text-preview";
+
+// Three.js loads only when a 3D model is opened.
+const ModelAttachmentPreview = lazy(() => import("@/components/ModelAttachmentPreview"));
 export { readTextPreview, TEXT_PREVIEW_MAX_BYTES } from "@/lib/text-preview";
 
 export function TextAttachmentPreview({ title, text, markdown, html = false, csv = false, patch = isPatchFile(title), downloadUrl }: {
@@ -59,7 +63,8 @@ export function TaskAttachmentPanel({ issueId, attachmentId }: { issueId: string
   });
   // Re-resolve against this task's authorized attachment list; never trust persisted URLs.
   const attachment = attachments.data?.find((item) => item.id === attachmentId);
-  const eligible = attachment && isTextAttachment(attachment) && attachment.byteSize <= TEXT_PREVIEW_MAX_BYTES;
+  const model = Boolean(attachment && isModelAttachment(attachment) && attachment.byteSize <= MODEL_PREVIEW_MAX_BYTES);
+  const eligible = attachment && !model && isTextAttachment(attachment) && attachment.byteSize <= TEXT_PREVIEW_MAX_BYTES;
   const content = useQuery({
     queryKey: ["task-text-attachment", issueId, attachmentId],
     queryFn: async ({ signal }) => readTextPreview(await fetch(
@@ -84,6 +89,13 @@ export function TaskAttachmentPanel({ issueId, attachmentId }: { issueId: string
   }
   if (!attachment) return <p className="p-4 text-sm" role="status">File no longer available. Close this tab or choose another file.</p>;
   const downloadUrl = attachmentDownloadPath(attachment);
+  if (model) {
+    return (
+      <Suspense fallback={<p className="p-4 text-sm" role="status">Đang tải trình xem 3D…</p>}>
+        <ModelAttachmentPreview key={attachment.id} issueId={issueId} attachment={attachment} downloadUrl={downloadUrl} />
+      </Suspense>
+    );
+  }
   if (!eligible || contentView.kind === "error") {
     return (
       <div className="space-y-3 p-4" role="alert">

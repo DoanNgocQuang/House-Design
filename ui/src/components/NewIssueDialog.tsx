@@ -4,6 +4,8 @@ import { useWorkspaceIsolationControls } from "@/hooks/useWorkspaceIsolationCont
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccountBoundMutation } from "@/hooks/useAccountBoundMutation";
+import { ISSUE_PRIORITIES } from "@paperclipai/shared";
+import { StoryPointsSelect } from "./StoryPointsSelect";
 import type { AgentEnvConfig, EnvBinding, IssueWorkMode } from "@paperclipai/shared";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
@@ -189,6 +191,8 @@ interface IssueDraft {
   description: string;
   status: string;
   priority: string;
+  storyPoints?: number | null;
+  labelIds?: string[];
   assigneeValue: string;
   reviewerValue: string;
   approverValue: string;
@@ -471,6 +475,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
   const descriptionRef = useRef("");
   const [status, setStatus] = useState("todo");
   const [priority, setPriority] = useState("");
+  const [storyPoints, setStoryPoints] = useState<number | null>(null);
+  const [labelIds, setLabelIds] = useState<string[]>([]);
   const [assigneeValue, setAssigneeValue] = useState("");
   const [reviewerValue, setReviewerValue] = useState("");
   const [approverValue, setApproverValue] = useState("");
@@ -531,6 +537,11 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
   const { data: projects } = useQuery({
     ...companyProjectsQuery(effectiveCompanyId!),
     enabled: !!effectiveCompanyId && newIssueOpen,
+  });
+  const { data: taskLabels } = useQuery({
+    queryKey: queryKeys.issues.labels(effectiveCompanyId!),
+    queryFn: () => issuesApi.listLabels(effectiveCompanyId!),
+    enabled: Boolean(effectiveCompanyId) && newIssueOpen,
   });
   const { data: mentionIssues } = useQuery({
     queryKey: queryKeys.issues.mentionPool(effectiveCompanyId!),
@@ -858,6 +869,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
         description: nextDescription,
         status,
         priority,
+        storyPoints,
+        labelIds,
         assigneeValue,
         reviewerValue,
         approverValue,
@@ -881,6 +894,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
       scheduleSave,
       status,
       priority,
+      storyPoints,
+      labelIds,
       assigneeValue,
       reviewerValue,
       approverValue,
@@ -917,6 +932,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
   }, [
     status,
     priority,
+    storyPoints,
+    labelIds,
     assigneeValue,
     reviewerValue,
     approverValue,
@@ -949,6 +966,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
     setComposerSettings(draft.composerSettings ?? null);
     setStatus(draft.status || "todo");
     setPriority(draft.priority);
+    setStoryPoints(draft.storyPoints ?? null);
+    setLabelIds(draft.labelIds ?? []);
     setAssigneeValue(
       defaults.assigneeAgentId || defaults.assigneeUserId
         ? assigneeValueFromSelection(defaults)
@@ -1044,6 +1063,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
       setIssueText(newIssueDefaults.title ?? "", newIssueDefaults.description ?? "");
       setStatus(newIssueDefaults.status ?? "todo");
       setPriority(newIssueDefaults.priority ?? "");
+      setStoryPoints(null);
+      setLabelIds([]);
       setProjectId(defaultProjectId);
       setProjectWorkspaceId(defaultProjectWorkspaceId);
       setAssigneeValue(assigneeValueFromSelection(newIssueDefaults));
@@ -1061,6 +1082,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
       setIssueText(newIssueDefaults.title ?? "", newIssueDefaults.description ?? "");
       setStatus(newIssueDefaults.status ?? "todo");
       setPriority(newIssueDefaults.priority ?? "");
+      setStoryPoints(null);
+      setLabelIds([]);
       const defaultProjectId = newIssueDefaults.projectId ?? "";
       const defaultProject = orderedProjects.find((project) => project.id === defaultProjectId);
       const hasExplicitProjectWorkspaceId = newIssueDefaults.projectWorkspaceId !== undefined;
@@ -1093,6 +1116,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
       setIssueText("", "");
       setStatus(newIssueDefaults.status ?? "todo");
       setPriority(newIssueDefaults.priority ?? "");
+      setStoryPoints(null);
+      setLabelIds([]);
       setProjectId(defaultProjectId);
       setProjectWorkspaceId(newIssueDefaults.projectWorkspaceId ?? defaultProjectWorkspaceIdForProject(defaultProject));
       setAssigneeValue(assigneeValueFromSelection(newIssueDefaults));
@@ -1130,6 +1155,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
     setIssueText("", "");
     setStatus("todo");
     setPriority("");
+    setStoryPoints(null);
+    setLabelIds([]);
     setAssigneeValue("");
     setReviewerValue("");
     setApproverValue("");
@@ -1208,6 +1235,8 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
       description: currentDescription || undefined,
       status,
       priority: priority || "medium",
+      storyPoints,
+      ...(labelIds.length ? { labelIds } : {}),
       workMode: mode,
       ...(effectivePrivate ? { visibility: "private" } : {}),
       ...(selectedAssigneeAgentId ? { assigneeAgentId: selectedAssigneeAgentId } : {}),
@@ -1247,7 +1276,7 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
     }
     let createPayload: PendingCreate = {
       fingerprint, data: { ...createData, allowDuplicate: true, navigateOnCreate: newIssueDefaults.navigateOnCreate === true },
-      draft: { title: currentTitle, description: currentDescription, status, priority, assigneeValue,
+      draft: { title: currentTitle, description: currentDescription, status, priority, storyPoints, labelIds, assigneeValue,
         reviewerValue, approverValue, watchdogAgentId, watchdogInstructions, projectId, projectWorkspaceId,
         assigneeModelLane, assigneeModelOverride, assigneeThinkingEffort, assigneeChrome,
         executionWorkspaceMode, selectedExecutionWorkspaceId, workMode: mode, isPrivate: effectivePrivate, composerSettings: settings },
@@ -1530,6 +1559,32 @@ function AccountNewIssueDialog({ ignoreDefaults }: { ignoreDefaults: boolean }) 
           className="min-h-0 overflow-y-auto overscroll-contain"
         >
           {filesStorageError ? <p className="mb-2 text-sm text-destructive" role="alert">{filesStorageError}</p> : null}
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+            <label className="flex items-center gap-1.5">
+              Priority
+              <select value={priority || "medium"} onChange={(event) => setPriority(event.target.value)} className="rounded-md border bg-background px-1.5 py-1 capitalize">
+                {ISSUE_PRIORITIES.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5">
+              Story Points
+              <StoryPointsSelect value={storyPoints} onChange={setStoryPoints} />
+            </label>
+            {taskLabels?.length ? (
+              <details className="rounded-md border bg-background px-2 py-1">
+                <summary className="cursor-pointer">Labels{labelIds.length ? ` (${labelIds.length})` : ""}</summary>
+                <div className="mt-1 max-h-32 overflow-auto">
+                  {taskLabels.map((label) => <label key={label.id} className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={labelIds.includes(label.id)} onChange={(event) => {
+                      const checked = event.target.checked;
+                      setLabelIds((ids) => checked ? [...ids, label.id] : ids.filter((id) => id !== label.id));
+                    }} />
+                    {label.name}
+                  </label>)}
+                </div>
+              </details>
+            ) : null}
+          </div>
           <TaskChatPresentationProvider mode={streamlinedUiEnabled || coordinatorEnabled ? "streamlined" : "production"}>
             <TaskChatComposer
               workMode={workMode}

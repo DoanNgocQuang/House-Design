@@ -2,7 +2,7 @@ import { requiresExecutionReconciliation } from "@paperclipai/shared";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { ExternalObjectSummary, Issue, IssueRecoveryAction } from "@paperclipai/shared";
 import { Link } from "@/lib/router";
-import { Archive, Flag, CircleAlert } from "lucide-react";
+import { Archive, Flag, CircleAlert, Zap, SquareCheck, Workflow, MessageSquareText } from "lucide-react";
 import {
   createIssueDetailPath,
   rememberIssueDetailLocationState,
@@ -368,6 +368,9 @@ export function IssueRow({
 
           <span role={refreshed && columnValues ? "cell" : undefined} data-slot="task-row-content" data-marquee-cell={refreshed ? "task" : undefined} className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
             <span data-slot="task-row-title-cluster" className="flex min-w-0 flex-1 items-baseline gap-1.5 sm:items-center">
+              {refreshed && columnValues && issue.hierarchyKind ? (
+                <TaskHierarchyIcon kind={issue.hierarchyKind} />
+              ) : null}
               {refreshed ? (
                 <CellMarquee cell="task" active={titleFocused} slot="task-row-title" contentSlot="task-row-title-text" tabbable={false} className={cn("min-w-0", isUnread && "font-semibold", titleClassName)}>
                   {issue.title}{titleSuffix}
@@ -639,5 +642,27 @@ function renderRecoveryChip(
       <Icon className="h-2.5 w-2.5" aria-hidden />
       {label}
     </Badge>
+  );
+}
+
+// Delegated tree: owner's request -> Epic (CEO -> PM) -> Task -> Sub-task. Tones come from --task-hierarchy-tone in index.css.
+export const taskHierarchyIcons = {
+  request: { label: "Yêu cầu", Icon: MessageSquareText, color: "" },
+  epic: { label: "Epic", Icon: Zap, color: "" },
+  task: { label: "Task", Icon: SquareCheck, color: "" },
+  subtask: { label: "Sub-task", Icon: Workflow, color: "" },
+} as const;
+
+function TaskHierarchyIcon({ kind }: { kind: NonNullable<Issue["hierarchyKind"]> }) {
+  const { label, Icon, color } = taskHierarchyIcons[kind];
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={label} data-task-hierarchy={kind} className={cn("inline-flex shrink-0 self-center", color)}>
+          <Icon className="size-4" aria-hidden />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

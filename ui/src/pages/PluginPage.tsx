@@ -6,6 +6,7 @@ import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { pluginsApi } from "@/api/plugins";
 import { queryKeys } from "@/lib/queryKeys";
 import {
+  ensurePluginContributionLoaded,
   PluginSlotMount,
   resolveRouteSidebarSlot,
   type ResolvedPluginSlot,
@@ -13,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { NotFoundPage } from "./NotFound";
+import { AgentOfficeView } from "@/components/AgentOfficeView";
+import { ToastViewport } from "@/components/ToastViewport";
 
 /**
  * Company-context plugin page. Renders a plugin's `page` slot at
@@ -22,14 +25,15 @@ import { NotFoundPage } from "./NotFound";
  * @see doc/plugins/PLUGIN_SPEC.md §19.2 — Company-Context Routes
  * @see doc/plugins/PLUGIN_SPEC.md §24.4 — Company-Context Plugin Page
  */
-export function PluginPage() {
+export function PluginPage({ standaloneRoute }: { standaloneRoute?: "agent-pixels" } = {}) {
   const params = useParams<{
     companyPrefix?: string;
     pluginId?: string;
     pluginRoutePath?: string;
     "*": string | undefined;
   }>();
-  const { companyPrefix: routeCompanyPrefix, pluginId, pluginRoutePath } = params;
+  const { companyPrefix: routeCompanyPrefix, pluginId } = params;
+  const pluginRoutePath = standaloneRoute ?? params.pluginRoutePath;
   const pluginRouteSplat = params["*"];
   const { companies, selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -88,6 +92,13 @@ export function PluginPage() {
     return matches[0] ?? null;
   }, [pluginId, pluginRoutePath, contributions]);
 
+  const standaloneContribution = standaloneRoute
+    ? contributions?.find(contribution => contribution.pluginId === pageSlot?.pluginId)
+    : undefined;
+  useEffect(() => {
+    if (standaloneContribution) void ensurePluginContributionLoaded(standaloneContribution).catch(() => undefined);
+  }, [standaloneContribution]);
+
   const context = useMemo(
     () => ({
       companyId: resolvedCompanyId ?? null,
@@ -120,7 +131,7 @@ export function PluginPage() {
     }
     setBreadcrumbs([
       { label: "Plugins", href: "/company/settings/instance/plugins" },
-      { label: pageSlot.pluginDisplayName },
+      { label: pageSlot.routePath === "agent-chat-rooms" ? pageSlot.displayName : pageSlot.pluginDisplayName },
     ]);
   }, [pageSlot, pluginRouteSplat, setBreadcrumbs, routeSidebarActive]);
 
@@ -161,6 +172,15 @@ export function PluginPage() {
       ? `/company/settings/instance/plugins/${pluginId}`
       : "/company/settings/instance/plugins";
     return <Navigate to={settingsPath} replace />;
+  }
+
+  if (standaloneRoute === "agent-pixels") {
+    return (
+      <AgentOfficeView>
+        <PluginSlotMount slot={pageSlot} context={context} className="h-full" missingBehavior="placeholder" />
+        <ToastViewport />
+      </AgentOfficeView>
+    );
   }
 
   return (

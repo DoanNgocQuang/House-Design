@@ -5329,6 +5329,7 @@ const issueListSelect = {
   workMode: issues.workMode,
   harnessKind: issues.harnessKind,
   priority: issues.priority,
+  storyPoints: issues.storyPoints,
   reviewPolicy: issues.reviewPolicy,
   assigneeAgentId: issues.assigneeAgentId,
   assigneeUserId: issues.assigneeUserId,
@@ -14345,6 +14346,8 @@ export function issueService(db: Db) {
       createdByAgentId?: string | null;
       createdByUserId?: string | null;
       createdByRunId?: string | null;
+      /** Overwrite the task's agent-made file of the same name (keeping its id, so links stay valid). */
+      replaceSameName?: boolean;
     }) => {
       const issue = await db
         .select({ id: issues.id, companyId: issues.companyId })
@@ -14354,7 +14357,9 @@ export function issueService(db: Db) {
       if (!issue) throw notFound("Issue not found");
 
       return db.transaction(async (tx) => {
-        if (input.createdByAgentId && input.issueCommentId) {
+        const overwrite = input.replaceSameName && input.originalFilename && !input.issueCommentId;
+        // The lock keeps two uploads of one name from both finding nothing to overwrite.
+        if (overwrite || (input.createdByAgentId && input.issueCommentId)) {
           const [lockedIssue] = await tx
             .select({ id: issues.id })
             .from(issues)
@@ -14468,33 +14473,89 @@ export function issueService(db: Db) {
           }
         }
         await notifyNativeStatusReassessment(tx, { companyId: issue.companyId, issueId: issue.id });
-        const [asset] = await tx
-          .insert(assets)
-          .values({
-            companyId: issue.companyId,
-            provider: input.provider,
-            objectKey: input.objectKey,
-            contentType: input.contentType,
-            byteSize: input.byteSize,
-            sha256: input.sha256,
-            originalFilename: input.originalFilename ?? null,
-            createdByAgentId: input.createdByAgentId ?? null,
-            createdByUserId: input.createdByUserId ?? null,
-          })
-          .returning();
+        // Only agent-made files are overwritten (pasted screenshots share names such as "image.png"),
+        // including those an agent sent with its own comment: that comment keeps the updated file.
+        const [replaced] = overwrite
+          ? await tx
+              .select({
+                id: issueAttachments.id,
+                companyId: issueAttachments.companyId,
+                issueId: issueAttachments.issueId,
+                assetId: assets.id,
+                provider: assets.provider,
+                objectKey: assets.objectKey,
+                createdByAgentId: assets.createdByAgentId,
+              })
+              .from(issueAttachments)
+              .innerJoin(assets, eq(issueAttachments.assetId, assets.id))
+              .where(
+                and(
+                  eq(issueAttachments.companyId, issue.companyId),
+                  eq(issueAttachments.issueId, issue.id),
+                  eq(assets.originalFilename, input.originalFilename!),
+                  isNotNull(assets.createdByAgentId),
+                ),
+              )
+              .orderBy(desc(issueAttachments.createdAt))
+              .limit(1)
+          : [];
+        const file = {
+          provider: input.provider,
+          objectKey: input.objectKey,
+          contentType: input.contentType,
+          byteSize: input.byteSize,
+          sha256: input.sha256,
+          createdByAgentId: input.createdByAgentId ?? replaced?.createdByAgentId ?? null,
+          createdByUserId: input.createdByUserId ?? null,
+        };
+        const now = new Date();
+        const [asset] = replaced
+          ? await tx
+              .update(assets)
+              .set({ ...file, updatedAt: now })
+              .where(eq(assets.id, replaced.assetId))
+              .returning()
+          : await tx
+              .insert(assets)
+              .values({ ...file, companyId: issue.companyId, originalFilename: input.originalFilename ?? null })
+              .returning();
 
-        const [attachment] = await tx
-          .insert(issueAttachments)
-          .values({
-            companyId: issue.companyId,
-            issueId: issue.id,
-            assetId: asset.id,
-            issueCommentId: input.issueCommentId ?? null,
-            originatingRunId: registeredRunId,
-          })
-          .returning();
+        const [attachment] = replaced
+          ? await tx
+              .update(issueAttachments)
+              .set({ originatingRunId: registeredRunId, createdAt: now, updatedAt: now })
+              .where(eq(issueAttachments.id, replaced.id))
+              .returning()
+          : await tx
+              .insert(issueAttachments)
+              .values({
+                companyId: issue.companyId,
+                issueId: issue.id,
+                assetId: asset.id,
+                issueCommentId: input.issueCommentId ?? null,
+                originatingRunId: registeredRunId,
+              })
+              .returning();
         const contentPath = `/api/attachments/${attachment.id}/content`;
-        const [artifactWorkProduct] = registeredRunId
+        // An overwritten file keeps the single work product made for it.
+        const reusedWorkProducts = replaced
+          ? await tx
+              .update(issueWorkProducts)
+              .set({
+                metadata: sql`coalesce(${issueWorkProducts.metadata}, '{}'::jsonb) || ${JSON.stringify({ contentType: asset.contentType, byteSize: asset.byteSize })}::jsonb`,
+                updatedAt: now,
+              })
+              .where(
+                and(
+                  eq(issueWorkProducts.companyId, issue.companyId),
+                  eq(issueWorkProducts.issueId, issue.id),
+                  eq(issueWorkProducts.provider, "paperclip"),
+                  eq(issueWorkProducts.externalId, replaced.id),
+                ),
+              )
+              .returning({ id: issueWorkProducts.id })
+          : [];
+        const [artifactWorkProduct] = registeredRunId && reusedWorkProducts.length === 0
           ? await tx
               .insert(issueWorkProducts)
               .values({
@@ -14578,6 +14639,7 @@ export function issueService(db: Db) {
           createdAt: attachment.createdAt,
           updatedAt: attachment.updatedAt,
           artifactWorkProductId: artifactWorkProduct?.id ?? null,
+          replaced: replaced ?? null,
         };
       });
     },

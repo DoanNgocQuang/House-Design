@@ -222,6 +222,7 @@ export const INBOX_MINE_ISSUE_STATUS_FILTER = INBOX_MINE_ISSUE_STATUSES.join(","
 
 export const ISSUE_PRIORITIES = ["critical", "high", "medium", "low"] as const;
 export type IssuePriority = (typeof ISSUE_PRIORITIES)[number];
+export const ISSUE_STORY_POINTS = [1, 2, 3, 5, 8, 13, 21] as const;
 export const ISSUE_REVIEW_POLICIES = ["anyone", "not_creator", "human_only"] as const;
 export type IssueReviewPolicy = (typeof ISSUE_REVIEW_POLICIES)[number];
 export const ISSUE_WORK_MODES = ["standard", "ask", "planning", "skill_test"] as const;
@@ -1732,6 +1733,8 @@ export const PLUGIN_EVENT_TYPES = [
   "issue.document.created",
   "issue.document.updated",
   "issue.document.deleted",
+  "issue.interaction.created",
+  "issue.interaction.updated",
   "issue.relations.updated",
   "issue.checked_out",
   "issue.released",

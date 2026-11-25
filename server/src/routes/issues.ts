@@ -2,6 +2,7 @@ import { assertAgentInteraction } from "../services/agent-interaction-policy.js"
 import { isAppQuestionCardKey } from "../services/mcp-elicitation.js";
 import { assertQueuedCommentInteractionDelivery, recheckQueuedCommentInteractionDelivery } from "../services/agent-interaction-delivery.js";
 import { listStalledDependencies } from "../services/recovery/blocker-stall-wakeups.js";
+import { MAX_SVG_PREVIEW_BYTES, renderSvgPreview } from "../services/svg-preview.js";
 import { confirmMcpAttachmentCleanup, recordMcpAttachmentCleanup, type McpAttachmentCleanup } from "../services/public-mcp/upload-cleanup.js";
 import { notifyDeferredExecutionWork } from "../services/deferred-execution-notifications.js";
 import { notifyNativeRecoveryNotices } from "../services/native-recovery-notice-notifications.js";
@@ -3076,6 +3077,7 @@ function toCompactIssue(issue: any): CompactIssue {
     status: issue.status,
     workMode: issue.workMode,
     priority: issue.priority,
+    storyPoints: issue.storyPoints ?? null,
     reviewPolicy: issue.reviewPolicy,
     assigneeAgentId: issue.assigneeAgentId,
     assigneeUserId: issue.assigneeUserId,
@@ -3133,6 +3135,25 @@ function toCompactIssue(issue: any): CompactIssue {
     interruption: issue.interruption ?? null,
     successfulRunHandoff: issue.successfulRunHandoff ?? null,
   };
+}
+
+/** `links` maps each readable ancestor id to its own parent id; a missing id means unreadable. */
+/**
+ * Level in a delegated tree: the root is the owner's request, its child the Epic (CEO -> PM),
+ * then Task, then Sub-task. `links` maps each readable ancestor id to its own parent id.
+ */
+export function issueHierarchyKind(
+  parentId: string | null | undefined,
+  links: ReadonlyMap<string, string | null>,
+): CompactIssue["hierarchyKind"] {
+  const kinds = ["request", "epic", "task"] as const;
+  let current = parentId ?? null;
+  for (const kind of kinds) {
+    if (current === null) return kind;
+    if (!links.has(current)) return null;
+    current = links.get(current) ?? null;
+  }
+  return "subtask";
 }
 
 function compactIssueListEtag(issues: CompactIssue[]): string {
@@ -5676,9 +5697,9 @@ export function issueRoutes(
 
   type IssueEdgeReference = IssueRelationIssueSummary | IssueLockedStub;
 
-  async function readableIssueEdgeIds(req: Request, companyId: string, ids: string[]) {
+  async function readableIssueEdgeRows(req: Request, companyId: string, ids: string[]) {
     const uniqueIds = [...new Set(ids)];
-    if (uniqueIds.length === 0) return new Set<string>();
+    if (uniqueIds.length === 0) return [];
     const rows = await db
       .select({
         id: issueRows.id,
@@ -5691,7 +5712,26 @@ export function issueRoutes(
       })
       .from(issueRows)
       .where(and(eq(issueRows.companyId, companyId), inArray(issueRows.id, uniqueIds)));
-    return new Set((await filterIssuesForActor(req, rows)).map((row) => row.id));
+    return filterIssuesForActor(req, rows);
+  }
+
+  async function readableIssueEdgeIds(req: Request, companyId: string, ids: string[]) {
+    return new Set((await readableIssueEdgeRows(req, companyId, ids)).map((row) => row.id));
+  }
+
+  async function withIssueHierarchyKinds<T extends Pick<CompactIssue, "id" | "parentId">>(
+    req: Request, companyId: string, rows: T[],
+  ): Promise<Array<T & { hierarchyKind: CompactIssue["hierarchyKind"] }>> {
+    const links = new Map<string, string | null>();
+    // Three ancestor levels tell request, epic, task and sub-task apart.
+    let pending = [...new Set(rows.flatMap((row) => row.parentId ? [row.parentId] : []))];
+    for (let level = 0; level < 3 && pending.length; level++) {
+      for (const ancestor of await readableIssueEdgeRows(req, companyId, pending)) {
+        links.set(ancestor.id, ancestor.parentId);
+      }
+      pending = [...new Set([...links.values()].flatMap((id) => id && !links.has(id) ? [id] : []))];
+    }
+    return rows.map((row) => ({ ...row, hierarchyKind: issueHierarchyKind(row.parentId, links) }));
   }
 
   function lockedIssueStub(issue: Pick<IssueRelationIssueSummary, "id" | "identifier">): IssueLockedStub {
@@ -8965,7 +9005,9 @@ export function issueRoutes(
       : await filterIssuesForActor(req, rawResult);
     const result = await redactIssueRelationEdgesOnRows(req, companyId, visibleRows);
     if (view === "index") {
-      const body = result.map((issue) => ({ ...toCompactIssue(issue), listProjection: "index" as const }));
+      // The list cache is keyed per actor, so actor-dependent hierarchy kinds are safe to cache.
+      const body = await withIssueHierarchyKinds(req, companyId,
+        result.map((issue) => ({ ...toCompactIssue(issue), listProjection: "index" as const })));
       return { kind: "compact", body, etag: compactIssueListEtag(body), cacheControl: "private, must-revalidate", pagination };
     }
     const issueIds = result.map((issue) => issue.id);
@@ -8991,14 +9033,14 @@ export function issueRoutes(
           else recoveryActionByIssue.delete(issue.id);
         }),
       );
-      const compactResult = result.map((issue) =>
+      const compactResult = await withIssueHierarchyKinds(req, companyId, result.map((issue) =>
         ({ ...toCompactIssue({
           ...issue,
           activeRecoveryAction: recoveryActionByIssue.get(issue.id) ?? null,
           interruption: interruptions.get(issue.id) ?? null,
           successfulRunHandoff: handoffStates.get(issue.id) ?? null,
         }), ...(view === "rows" ? { listProjection: "rows" as const } : {}) }),
-      );
+      ));
       return {
         kind: "compact",
         body: compactResult,
@@ -9029,7 +9071,7 @@ export function issueRoutes(
     );
     return {
       kind: "full",
-      body: result.map((issue) => ({
+      body: (await withIssueHierarchyKinds(req, companyId, result)).map((issue) => ({
         ...issue,
         successfulRunHandoff: handoffStates.get(issue.id) ?? null,
         activeRecoveryAction: recoveryActionByIssue.get(issue.id) ?? null,
@@ -21242,6 +21284,7 @@ export function issueRoutes(
           createdByAgentId: actor.agentId,
           createdByUserId: actor.actorType === "user" ? actor.actorId : null,
           createdByRunId: actor.runId,
+          replaceSameName: true,
         });
       } catch (err) {
         // A known 4xx means the registration transaction definitely rejected
@@ -21262,6 +21305,15 @@ export function issueRoutes(
         throw err;
       }
 
+      if (attachment.replaced) {
+        try {
+          await storage.deleteObject(companyId, attachment.replaced.objectKey);
+          await recordMcpAttachmentCleanup(db, await confirmMcpAttachmentCleanup(db, storage, attachment.replaced));
+        } catch (err) {
+          logger.warn({ err, attachmentId: attachment.id }, "failed to remove the overwritten attachment object");
+        }
+      }
+
       await logActivity(db, {
         companyId,
         actorType: actor.actorType,
@@ -21277,6 +21329,7 @@ export function issueRoutes(
           originalFilename: attachment.originalFilename,
           contentType: attachment.contentType,
           byteSize: attachment.byteSize,
+          ...(attachment.replaced ? { overwritten: true } : {}),
         },
       });
 
@@ -21302,6 +21355,7 @@ export function issueRoutes(
 
       const {
         artifactWorkProductId: _artifactWorkProductId,
+        replaced: _replaced,
         ...attachmentResponse
       } = attachment;
       res.status(201).json(withContentPath(attachmentResponse));
@@ -21323,6 +21377,19 @@ export function issueRoutes(
       return;
     }
     if (!(await assertIssueReadAllowed(req, res, issue))) return;
+
+    if (req.query.as === "png") {
+      const isSvg = attachment.contentType === SVG_CONTENT_TYPE || /\.svg$/i.test(attachment.originalFilename ?? "");
+      if (!isSvg || attachment.byteSize > MAX_SVG_PREVIEW_BYTES) throw unprocessable("Only SVG files up to 10 MB can be shown as PNG");
+      const source = await storage.getObject(attachment.companyId, attachment.objectKey);
+      const chunks: Buffer[] = [];
+      for await (const chunk of source.stream) chunks.push(Buffer.from(chunk));
+      const png = await renderSvgPreview(Buffer.concat(chunks));
+      res.setHeader("Cache-Control", "private, max-age=60");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.type("image/png").send(png);
+      return;
+    }
 
     const contentLength = attachment.byteSize;
     const range = parseAttachmentRangeHeader(

@@ -5,20 +5,21 @@ export const taskListColumns = [
   { id: "task", label: "Task", width: "var(--task-list-column-task)" },
   { id: "taskId", label: "Task ID", width: "var(--task-list-column-task-id)" },
   { id: "createdBy", label: "Created by", width: "var(--task-list-column-created-by)" },
+  { id: "priority", label: "Priority", width: "5.5rem" },
+  { id: "storyPoints", label: "Story Points", width: "6rem" },
   { id: "assignee", label: "Assignee", width: "var(--task-list-column-assignee)" },
   { id: "project", label: "Project", width: "var(--task-list-column-project)" },
   { id: "parentTask", label: "Parent Task", width: "var(--task-list-column-parent)" },
-  { id: "tags", label: "Tags", width: "var(--task-list-column-tags)" },
   { id: "worktree", label: "Worktree", width: "var(--task-list-column-worktree)" },
   { id: "lastUpdated", label: "Last updated", width: "var(--task-list-column-updated)" },
 ] as const;
 
 export type TaskListColumnId = (typeof taskListColumns)[number]["id"];
-export type TaskListSort<Column extends string = TaskListColumnId> = { column: Column; direction: "ascending" | "descending" };
-export type TaskListOrder = TaskListSort<TaskListColumnId | "created" | "status" | "priority" | "workflow">;
+export type TaskListSort<Column extends string = Exclude<TaskListColumnId, "storyPoints">> = { column: Column; direction: "ascending" | "descending" };
+export type TaskListOrder = TaskListSort<Exclude<TaskListColumnId, "storyPoints"> | "created" | "status" | "workflow" | "tags">;
 export type TaskListSortValue = string | number | null | undefined;
 export const allTaskListColumns: readonly TaskListColumnId[] = taskListColumns.map(column => column.id);
-export const defaultTaskListColumns: readonly TaskListColumnId[] = ["task", "taskId", "lastUpdated"];
+export const defaultTaskListColumns: readonly TaskListColumnId[] = ["task", "taskId", "priority", "storyPoints", "assignee"];
 export const defaultTaskListSort: TaskListSort = { column: "lastUpdated", direction: "descending" };
 
 /** Task occupies two adjacent physical tracks: status/disclosure, then title. */

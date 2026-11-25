@@ -906,7 +906,11 @@ export type IssueSummary = Pick<
   unreadSubtaskCount?: number;
 };
 
+export type IssueHierarchyKind = "request" | "epic" | "task" | "subtask";
+
 export interface Issue {
+  /** List-only classification. Null when a required ancestor cannot be read. */
+  hierarchyKind?: IssueHierarchyKind | null;
   /** Read-only status for task presentation; never use it for execution admission. */
   displayStatus?: IssueDisplayStatus;
   /** Collection projections omit task bodies and cannot seed the detail cache. */
@@ -946,6 +950,7 @@ export interface Issue {
   status: IssueStatus;
   workMode: IssueWorkMode;
   priority: IssuePriority;
+  storyPoints?: number | null;
   reviewPolicy: IssueReviewPolicy | null;
   assigneeAgentId: string | null;
   assigneeUserId: string | null;
@@ -1035,6 +1040,7 @@ export interface Issue {
 
 export type CompactIssue = Pick<
   Issue,
+  | "hierarchyKind"
   | "listProjection"
   | "externalConversationState"
   | "id"
@@ -1051,6 +1057,7 @@ export type CompactIssue = Pick<
   | "status"
   | "workMode"
   | "priority"
+  | "storyPoints"
   | "reviewPolicy"
   | "assigneeAgentId"
   | "assigneeUserId"

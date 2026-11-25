@@ -1,0 +1,308 @@
+# Pixel Agent
+
+![Agent Pixels logo banner](public/assets/brand/agent-pixels-logo-banner.jpg)
+
+Pixel Agent is a [Paperclip](https://github.com/paperclipai/paperclip) plugin that turns your company of AI agents into a live pixel-art office camera. Inside Paperclip it shows up under the display name **Agent Pixels**.
+
+This repo (`tomartec/pixel-agent`) is maintained independently, built on the official Paperclip plugin SDK toolchain. It started from [gcampton/Agent-Pixels](https://github.com/gcampton/Agent-Pixels) — see [Credits](#credits) below.
+
+![Agent Pixels hero image](public/assets/brand/agent-pixels-hero.jpg)
+
+## What It Does
+
+- Shows Paperclip agents walking around a single unified office floor — one rectangular map divided into rooms (office + lounge, boardroom + game room, overflow office, staff kitchen) connected by corridors.
+- Moves working agents toward desks and idle agents toward lounge, kitchen, boardroom, and games areas.
+- Updates live as agents work — status changes stream in over SSE rather than only on page load, with a connection badge in the header.
+- Labels each character with its name and the task it is currently working on; clicking a character opens a detail panel with a link through to that agent in Paperclip.
+- Shows a speech bubble above agents that are waiting on your approval, or idling.
+- Remembers where everyone is, so switching tabs or reloading does not send the whole office back to the entrance.
+- Camera views, chosen from the camera dropdown in the header:
+  - **Total** — flat top-down view of the entire floor (the default).
+  - **Per-room views** — one per quadrant, also switchable with the on-screen 4-way arrows or the keyboard arrow keys (rooms are laid out on a 2×2 grid).
+  - **3D Map** — isometric view of the whole office: the floor plane is projected at 45°, walls and characters stand upright, furniture lies on the floor.
+- Includes assignable character sprites so each agent can have a consistent look.
+- **Office maps** — besides the classic HQ, seven preset floor plans (based on the reference art in `docs/option1-7.png`): Central Hub, Open Studio, The Boulevard, Campus Mini, Team Pods, Creative Loft, and Hybrid Office. Selectable from the camera page header; the choice is saved per company.
+- **Themes** — every map (including the classic HQ) can be re-tinted with a theme: Classic, Midnight, Pastel, Forest, Sunset, Monochrome, Neon, or Retro.
+- **Industry templates** — preset maps can relabel their rooms for different kinds of companies (Software Company, Creative Agency, E-commerce, Game Studio) without changing the floor plan.
+
+## Choosing a Map, Theme, and Industry Template
+
+The camera page header starts with three dropdowns. All choices are saved per company in the browser, so each company can have its own office look.
+
+- **Map** — picks the floor plan:
+  - **Classic HQ** (default) — the original four-room office.
+  - **Central Hub** — rooms ring a central reception/lounge hub.
+  - **Open Studio** — open colored zones with only a few walled rooms.
+  - **The Boulevard** — rooms flank a long central promenade with planters and sofas.
+  - **Campus Mini** — rooms around a green garden courtyard.
+  - **Team Pods** — open team pods on a shared floor.
+  - **Creative Loft** — one big loft with work zones, a lounge, and a game corner.
+  - **Hybrid Office** — an open work zone and collaboration hub surrounded by private rooms.
+- **Theme** — re-tints the floors, walls, and desks of any map: Classic, Midnight, Pastel, Forest, Sunset, Monochrome, Neon, or Retro.
+- **Industry template** (preset maps only) — relabels the rooms so the same floor plan reads as a different company: Software Company, Creative Agency, E-commerce, or Game Studio. Only the room name plates change; the layout stays the same.
+
+To the right of these sit the **Camera** dropdown — **Total** (whole-floor view, the default) and one entry per room, named after the room itself — then the **3D Map** and **Characters** buttons, the connection badge, and the ↺ reset control. Quadrant cameras are also switchable with the arrow keys or the on-screen arrows.
+
+## Screenshots
+
+![Agent Pixels camera screenshot](public/assets/brand/agent-pixels-screenshot-camera.jpg)
+
+![Agent Pixels character picker screenshot](public/assets/brand/agent-pixels-screenshot-characters.jpg)
+
+## Install
+
+### From the Paperclip UI (recommended)
+
+The easiest way to install — no source code, CLI, or build step needed. The plugin is published on npm as [`@tomartec/pixel-agent`](https://www.npmjs.com/package/@tomartec/pixel-agent).
+
+1. Open Paperclip in your browser.
+2. Go to **Plugins** (instance settings → Plugins).
+3. Click **Install Plugin**.
+4. Enter the npm package name:
+
+   ```text
+   @tomartec/pixel-agent
+   ```
+
+5. Confirm the install. Paperclip downloads the package from npm and loads it.
+
+After installing, **Agent Pixels** appears in the sidebar; open it to see the live office camera. To update later, reinstall with the same package name to pull the latest published version.
+
+### Release Version
+
+> Note: a published release ZIP is only available once a GitHub Release has been
+> created for this repo (see `pnpm run package:release` and the release workflow).
+> If there are no releases yet, use the [Development Version](#development-version) below.
+
+Use the release version if you just want to install the plugin. The release ZIP already contains the built plugin files, so you do not need the Paperclip source code or plugin SDK locally.
+
+Prerequisites:
+
+- Paperclip running
+- The latest `agent-pixels-*.zip` release file
+
+Download the latest `agent-pixels-*.zip` from the GitHub Releases page, then unzip it into your Paperclip plugins folder:
+
+```text
+~/.paperclip/plugins/
+```
+
+After unzipping, you should have a folder like this:
+
+```text
+agent-pixels-2026.807.2/
+  package.json
+  README.md
+  dist/
+    manifest.js
+    worker.js
+    ui/
+```
+
+For Docker installs, unzip the release into a bind-mounted folder and install the path as seen from inside the container, for example:
+
+```text
+/paperclip/plugins/agent-pixels-2026.807.2
+```
+
+### Development Version
+
+Use the development version if you want to edit the plugin or build it from source.
+
+Prerequisites:
+
+- Node.js 20+
+- pnpm
+- Paperclip running (the CLI talks to it on `http://127.0.0.1:3100` by default)
+- The Paperclip CLI installed globally:
+
+  ```bash
+  npm install -g paperclipai
+  ```
+
+The Paperclip plugin SDK is published on npm, so you do not need the Paperclip
+source code to build. The SDK (`@paperclipai/plugin-sdk`) and shared types
+(`@paperclipai/shared`) are regular dependencies installed by `pnpm install`.
+
+Clone and build the plugin:
+
+```bash
+git clone https://github.com/tomartec/pixel-agent
+cd pixel-agent
+pnpm install
+pnpm run build
+```
+
+The build output is written to `dist/`. The build uses the official SDK bundler
+presets (`@paperclipai/plugin-sdk/bundlers`) via `esbuild.config.mjs`, plus the
+asset-index step in `scripts/asset-index.mjs`.
+
+Install the plugin into Paperclip from this local folder, then confirm it loaded:
+
+```bash
+paperclipai plugin install /absolute/path/to/pixel-agent
+paperclipai plugin list
+paperclipai plugin inspect 4d696994-e10d-4a05-a063-ca8b6e95de80
+```
+
+The CLI auto-detects local paths and sends `isLocalPath: true`; pass `--local` to
+be explicit. Running `paperclipai plugin install .` from inside the folder works too.
+
+While installed from a local path, Paperclip watches the rebuilt `dist/` output —
+run `pnpm dev` in another terminal to rebuild on save and have the worker reload.
+
+To create a release ZIP after building (alternative distribution):
+
+```bash
+pnpm run package:release
+```
+
+This requires the `zip` command-line tool. The ZIP is written to `release/`.
+
+### npm Package
+
+The plugin is published as [`@tomartec/pixel-agent`](https://www.npmjs.com/package/@tomartec/pixel-agent) — see [From the Paperclip UI](#from-the-paperclip-ui-recommended) above for the recommended install flow. The same package name also works with the CLI:
+
+```bash
+paperclipai plugin install @tomartec/pixel-agent
+```
+
+## Development
+
+Common scripts:
+
+```bash
+pnpm dev          # rebuild worker, manifest, and ui bundles on save
+pnpm dev:ui       # local UI preview server with hot-reload events (port 4177)
+pnpm run typecheck
+pnpm test
+pnpm run build
+```
+
+### Self-Hosted Docker Install
+
+For self-hosted Paperclip, clone this repo into a folder that is visible inside the Paperclip container. The install API must receive the container path, not the host path.
+
+Example host path:
+
+```bash
+git clone https://github.com/tomartec/pixel-agent /volume4/docker/paperclip/plugins/agent-pixels
+```
+
+Example container path:
+
+```text
+/paperclip/plugins/agent-pixels
+```
+
+The plugin builds against the published `@paperclipai/plugin-sdk` and
+`@paperclipai/shared` packages from npm, so no Paperclip source checkout is
+required. Build it in place:
+
+```bash
+cd /path/to/pixel-agent
+pnpm install
+pnpm run build
+```
+
+In authenticated Paperclip deployments, create a CLI auth challenge and approve it as an instance admin:
+
+```bash
+curl -s -X POST http://<your-paperclip-host>/api/cli-auth/challenges \
+  -H "Content-Type: application/json" \
+  -d '{"requestedAccess":"instance_admin_required","command":"plugin install"}'
+```
+
+Open the returned `approvalUrl`, approve the request, then install using the returned `boardApiToken`:
+
+```bash
+curl -s -X POST http://<your-paperclip-host>/api/plugins/install \
+  -H "Authorization: Bearer <boardApiToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"packageName":"/paperclip/plugins/agent-pixels","isLocalPath":true}'
+```
+
+### Note on the plugin id
+
+The manifest `id` (`4d696994-e10d-4a05-a063-ca8b6e95de80`) is a UUID rather
+than a human-readable string. This works around a Paperclip host bug where
+`/_plugins/:pluginId/ui/*` 500s for non-UUID plugin ids whenever a plugin
+declares a UI entrypoint. A UUID-shaped id sidesteps the bug; it is not the
+recommended format and can be reverted once the upstream issue is fixed.
+
+## Assets
+
+Character sprites live in:
+
+```text
+public/assets/characters/
+```
+
+Add new sprites as `char_81.png`, `char_82.png`, etc. The build script auto-detects `char_*.png` files and adds them to the plugin asset index.
+
+### Asset Dimensions
+
+The plugin uses a 16px tile grid.
+
+| Asset type | Location | Size |
+| --- | --- | --- |
+| Character sprite sheet | `public/assets/characters/char_*.png` | `112x96` PNG |
+| Character frame | inside each character sheet | `16x32` |
+| Character sheet layout | inside each character sheet | `7` columns x `3` rows |
+| Floor tile | `public/assets/floors/floor_*.png` | `16x16` |
+| Wall tile sheet | `public/assets/walls/wall_0.png` | `64x128` |
+| Furniture sprites | `public/assets/furniture/**` | Multiples of `16px` |
+| Office layout | `public/assets/default-layout-1.json` | `21x22` tiles (`336x352px`) |
+| Boardroom/kitchen layout | `public/assets/agent-pixels-layout-boardroom-kitchen.json` | `22x15` tiles (`352x240px`) |
+| Combined unified floor | generated in the UI (rooms on a 2×2 grid + corridors) | `49x32` tiles (`784x512px`) |
+
+Character sheets use three direction rows: front, back, and side. The opposite side direction is mirrored by the renderer.
+
+Common furniture sizes currently in use:
+
+| Asset | Size |
+| --- | --- |
+| Desk front | `48x32` |
+| Desk side | `16x64` |
+| PC sprites | `16x32` |
+| Wooden/cushioned chairs | `16x32` or `16x16` |
+| Sofa front/back | `32x16` |
+| Sofa side | `16x32` |
+| Boardroom table | `48x80` |
+| Pool table | `80x48` |
+| Arcade machine | `32x48` |
+| Paintings/whiteboard | `16x32` or `32x32` |
+| Plants | `16x32` or `32x48` |
+
+## Release Notes
+
+Full history and downloadable ZIPs: [GitHub Releases](https://github.com/tomartec/pixel-agent/releases).
+
+### 2026.807.2
+
+- **Agents show what they are working on.** Each character now has a second label beneath its name with the title of the in-progress task assigned to that agent, in every camera including Total.
+- **Click a character for details.** Selecting a character opens a panel with its status, role and current task, plus a link through to that agent in Paperclip. Hovering highlights the character under the cursor.
+- **Fixed: the live badge could be stuck on Offline forever.** The event channel was only created the first time a qualifying agent event fired after the worker started, so a company with no such event since startup had no channel to connect to at all — and reloading could not recover it.
+- **Fixed: sidebar icon drifted out of line when the sidebar was collapsed.** Paperclip keeps every nav icon at a fixed offset and only collapses the label; the plugin was re-centring its icon instead.
+- **Fixed: labels were unreadable in the Total camera.** Label sizes were floored in canvas units rather than CSS pixels, so on a high-DPI display they rendered at roughly half the intended size.
+
+### 2026.807.0
+
+- **The camera is live.** The plugin subscribes to agent status and run events and streams them to the office view, so it updates in real time instead of only on page load. A badge in the header reports the connection state (Live / Connecting / Reconnecting / Offline).
+- **Agents keep their positions.** Character positions and seat assignments now survive tab switches and page reloads, instead of every agent walking back in from the entrance. A reset control (↺) clears saved positions.
+- **Speech bubbles.** Agents waiting on your approval show a permission bubble; idle agents show a waiting bubble.
+- **Camera controls consolidated.** The Total and Camera 1–4 buttons became a single dropdown labelled with real room names.
+- **Fixed: the office could freeze permanently** when an agent was already awaiting approval as the page loaded.
+- Requires Paperclip SDK `2026.722.0` or newer, and the `events.subscribe` capability.
+
+## Support
+
+For bugs or feature requests on this fork, open an issue at [tomartec/pixel-agent/issues](https://github.com/tomartec/pixel-agent/issues).
+
+## Contributing
+
+Pull requests are welcome for bug fixes, plugin improvements, new room assets, furniture, and character sprites.
+
+## Credits
+
+This plugin is based on [gcampton/Agent-Pixels](https://github.com/gcampton/Agent-Pixels) by Garratt Campton, used here as the original reference implementation. For the original branding, ready-made Paperclip company packs, and the author's own support channel, see [agent-pixels.com](https://agent-pixels.com).

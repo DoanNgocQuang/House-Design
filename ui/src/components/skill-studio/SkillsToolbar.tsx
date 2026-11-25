@@ -54,7 +54,7 @@ export function SkillsToolbar({ viewTitle, viewDescription, searchLabel, search,
       <ToolbarSearch query={search} onQueryChange={onSearchChange} label={searchLabel} placeholder={`${searchLabel}…`} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" data-skill-control="sort">
             <span className="text-muted-foreground">Sort</span>
             <span>{DISCOVERY_SORT_LABELS[sort]}</span>
             <ChevronDown className="ml-1 h-3.5 w-3.5" />
@@ -107,7 +107,7 @@ export function SkillsToolbar({ viewTitle, viewDescription, searchLabel, search,
       </Button>
       {folderControl}
       {onCreateFolder ? (
-        <Button variant="outline" size="sm" onClick={onCreateFolder}>
+        <Button variant="outline" size="sm" onClick={onCreateFolder} data-skill-control="folder">
           <Plus className="mr-1 h-3.5 w-3.5" />
           New folder
         </Button>

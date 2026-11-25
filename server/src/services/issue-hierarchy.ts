@@ -20,6 +20,17 @@ export type ParentChainRow = {
 
 export type ParentPlacement = { effectiveParentId: string | null; adjustment: IssueParentAdjustment | null };
 
+/**
+ * Agent task depth limit. Defaults to MAX_AGENT_TASK_HIERARCHY_DEPTH; a deployment
+ * may raise it with PAPERCLIP_MAX_AGENT_TASK_DEPTH (an integer from 2 to 20) so
+ * agents can build Epic -> Task -> Sub-task trees under a delegated request.
+ */
+export function agentTaskDepthLimit(): number {
+  const raw = process.env.PAPERCLIP_MAX_AGENT_TASK_DEPTH?.trim();
+  const value = raw && /^\d+$/.test(raw) ? Number(raw) : NaN;
+  return value >= MAX_AGENT_TASK_HIERARCHY_DEPTH && value <= 20 ? value : MAX_AGENT_TASK_HIERARCHY_DEPTH;
+}
+
 // Ancestor walks are not depth-capped: placement needs the real root even for
 // legacy trees deeper than any fixed bound. Both loaders stop on a cycle.
 
@@ -43,7 +54,7 @@ export function placeTaskParent(chain: ParentChainRow[], policy: IssueParentDept
     return { effectiveParentId: requested?.id ?? null, adjustment: null };
   }
   // A parent at depth d (root = 1) gives the new task depth d + 1.
-  const maxParentDepth = MAX_AGENT_TASK_HIERARCHY_DEPTH - 1;
+  const maxParentDepth = agentTaskDepthLimit() - 1;
   if (chain.length <= maxParentDepth) return { effectiveParentId: requested.id, adjustment: null };
   const targetIndex = chain.length - maxParentDepth;
   // Low-trust boundaries are subtrees. Never move a task above the root of a

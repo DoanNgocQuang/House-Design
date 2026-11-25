@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ADD COLUMN "story_points" integer;

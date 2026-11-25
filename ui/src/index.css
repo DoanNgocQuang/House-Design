@@ -4508,6 +4508,29 @@ html:has(.design-proposal-theme) [data-slot="card-title"] { color: var(--foregro
   white-space: nowrap;
 }
 .task-row-column > * { max-width: 100%; }
+
+@media (max-width: 760px) {
+  .task-list-columns-content { min-width: 0; }
+  .task-list-column-header { visibility: hidden; }
+  .task-row-refreshed[data-columns="all"] {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    padding-inline-end: var(--task-row-padding-inline);
+  }
+  .task-row-refreshed[data-columns="all"] [data-slot="task-row-leading"] { grid-column: 1; }
+  .task-row-refreshed[data-columns="all"] [data-slot="task-row-content"] { grid-column: 2; }
+  .task-row-refreshed[data-columns="all"] .task-row-columns {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    gap: 4px 12px;
+  }
+  .task-row-column { display: inline-flex; max-width: 100%; align-items: center; gap: 4px; }
+  .task-row-column::before { content: attr(data-mobile-label); font-weight: 500; }
+}
+
 .task-row-columns [data-column="tags"] [data-slot="badge"] {
   color: var(--task-row-tag-foreground);
   background-color: var(--task-row-tag-background);
@@ -4793,6 +4816,19 @@ html:has(.design-proposal-theme) [data-slot="card-title"] { color: var(--foregro
 .design-sidebar-search svg { width: var(--design-page-icon-size); height: var(--design-page-icon-size); }
 .design-sidebar-search:hover { background: var(--muted-highlight); color: var(--foreground); }
 .design-sidebar-navigation { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: var(--design-page-toolbar-gap); overflow-y: auto; padding: var(--design-sidebar-item-inset) var(--design-sidebar-inset); }
+/* The workspace menu and Recent entries share one scroll viewport. */
+.coordinator-sidebar .design-sidebar-navigation {
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-gutter: stable;
+}
+.coordinator-sidebar .design-sidebar-navigation:focus-visible {
+  outline: var(--design-page-focus-width) solid var(--ring);
+  outline-offset: calc(-1 * var(--design-page-focus-width));
+}
+.coordinator-sidebar .design-sidebar-recents { flex: none; }
 .design-sidebar-primary { display: flex; flex-direction: column; gap: var(--design-sidebar-item-gap); }
 .design-sidebar-navigation [class~="group/sidebar-section"] > div { min-height: 0; }
 /* Navigation and streamlined properties intentionally share this exact label
@@ -4813,6 +4849,71 @@ html:has(.design-proposal-theme) .design-navigation-group-label {
 .design-sidebar-new-task { display: flex; justify-content: flex-start; width: calc(100% - var(--design-sidebar-item-inset) * 2); height: var(--design-sidebar-item-height); margin-inline: var(--design-sidebar-item-inset); padding-inline: var(--design-sidebar-item-inset); gap: calc(var(--spacing) * 2.5); font-size: var(--design-sidebar-label-size); line-height: var(--design-sidebar-label-leading); font-weight: var(--font-weight-medium); color: var(--design-sidebar-item-foreground); }
 .design-sidebar-new-task svg { width: var(--design-page-icon-size); height: var(--design-page-icon-size); }
 .design-sidebar-new-task:hover { background: var(--design-sidebar-item-highlight); color: var(--design-sidebar-item-active-foreground); }
+/* Workspace destinations retain their color when pinned or reordered. */
+:is(.coordinator-sidebar .design-sidebar-primary, [data-coordinator-more]) {
+  a[href$="/chats"] { --nav-icon-tone: light-dark(#7541ad, #d1afff); }
+  a[href$="/issues"] { --nav-icon-tone: light-dark(#277447, #91d9ab); }
+  a[href$="/decisions"] { --nav-icon-tone: light-dark(#8c5308, #f1c17a); }
+  a:is([href$="/agents"], [href$="/agents/all"]) { --nav-icon-tone: light-dark(#4c50a7, #b0b6ff); }
+  a[href$="/projects"] { --nav-icon-tone: light-dark(#98512c, #f2af8a); }
+  a[href$="/dashboard"] { --nav-icon-tone: light-dark(#18706d, #7ad8cf); }
+  a[href$="/search"] { --nav-icon-tone: light-dark(#2458b8, #93b9ff); }
+  a[href$="/routines"] { --nav-icon-tone: light-dark(#7541ad, #d1afff); }
+  a[href$="/artifacts"] { --nav-icon-tone: light-dark(#8c5308, #f1c17a); }
+  a[href$="/skills"] { --nav-icon-tone: light-dark(#277447, #91d9ab); }
+  a[href$="/apps"] { --nav-icon-tone: light-dark(#9e3972, #f6a9d1); }
+  a[href$="/activity"] { --nav-icon-tone: light-dark(#98512c, #f2af8a); }
+  a[href$="/settings"] { --nav-icon-tone: light-dark(#536479, #b7c6db); }
+  a[href$="/agent-stats"] { --nav-icon-tone: light-dark(#2458b8, #93b9ff); }
+  a[href$="/agent-pixels"] { --nav-icon-tone: light-dark(#9e3972, #f6a9d1); }
+}
+
+.coordinator-sidebar .design-sidebar-primary {
+  :where(.design-sidebar-new-task, .design-sidebar-item) {
+    --nav-icon-tone: currentColor;
+  }
+
+  .design-sidebar-new-task { --nav-icon-tone: light-dark(#2458b8, #93b9ff); }
+  [data-agent-office-shortcut] { --nav-icon-tone: light-dark(#9e3972, #f6a9d1); }
+  button[aria-label="More workspace pages"] { --nav-icon-tone: light-dark(#a33a3a, #f5a3a3); }
+
+  :is(.design-sidebar-new-task, .design-sidebar-item) > [data-slot="sidebar-nav-icon"],
+  :is(.design-sidebar-new-task, [data-agent-office-shortcut], button[aria-label="More workspace pages"]) > svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border-radius: 7px;
+    color: var(--nav-icon-tone);
+    background: color-mix(in srgb, var(--nav-icon-tone) 13%, transparent);
+  }
+
+  :is(.design-sidebar-new-task, [data-agent-office-shortcut], button[aria-label="More workspace pages"]) > svg {
+    padding: 4px;
+  }
+
+  :is(.design-sidebar-new-task, .design-sidebar-item) {
+    column-gap: 6px;
+    padding-block: 3px;
+  }
+
+  :is(.design-sidebar-new-task, .design-sidebar-item):is(:hover, [aria-current="page"], [aria-expanded="true"]) {
+    background: color-mix(in srgb, var(--nav-icon-tone) 9%, var(--design-sidebar-surface));
+  }
+
+  :is(.design-sidebar-new-task, .design-sidebar-item):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+}
+
+.coordinator-sidebar:has(.design-sidebar-brand[data-collapsed]) .design-sidebar-primary {
+  :is(.design-sidebar-new-task, .design-sidebar-item) {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+
 .design-sidebar-recents .design-sidebar-item { font-weight: var(--font-weight-normal); }
 .design-sidebar-navigation > :not(.design-sidebar-recents) { flex-shrink: 0; }
 .design-sidebar-recents { display: flex; flex: 1; min-height: 0; }
@@ -5786,4 +5887,126 @@ html:has(.design-proposal-theme) .agent-markdown-name-field [data-slot="input"],
 /* Secret values stay hidden while typed; a multi-line field cannot use type="password". */
 .secret-value-masked {
   -webkit-text-security: disc;
+}
+
+/* Color accents for the Coordinator Tasks list and its controls. */
+.coordinator-task-list {
+  --tasks-blue: light-dark(#2458b8, #93b9ff);
+  --tasks-violet: light-dark(#7541ad, #d1afff);
+  --tasks-teal: light-dark(#18706d, #7ad8cf);
+  --tasks-green: light-dark(#2e7d32, #8fd694);
+  --tasks-amber: light-dark(#8c5308, #f1c17a);
+}
+
+.coordinator-task-list [data-canonical-toolbar="tasks"] {
+  > button,
+  [data-toolbar-search],
+  .design-view-toggle button:first-child {
+    --tasks-control-tone: var(--tasks-blue);
+  }
+
+  .design-view-toggle button:last-child { --tasks-control-tone: var(--tasks-violet); }
+  .design-toolbar-actions > .design-toolbar-icon { --tasks-control-tone: var(--tasks-teal); }
+  .design-toolbar-filter > button { --tasks-control-tone: var(--tasks-amber); }
+
+  :is(button, [data-toolbar-search]) > svg:first-child {
+    color: var(--tasks-control-tone, currentColor);
+  }
+
+  > button,
+  .design-toolbar-actions button:not(.design-new-task) {
+    background: color-mix(in srgb, var(--tasks-control-tone, var(--tasks-blue)) 7%, var(--background));
+  }
+
+  .design-view-toggle button[aria-pressed="true"],
+  button:not(.design-new-task, [data-toolbar-clear]):not(:disabled):is(:hover, [data-state="open"], [data-active="true"]) {
+    background: color-mix(in srgb, var(--tasks-control-tone, var(--tasks-blue)) 15%, var(--background));
+  }
+
+  button.design-new-task {
+    background: light-dark(#285dba, #98baff);
+    color: light-dark(#fff, #142851);
+  }
+
+  button.design-new-task:hover { background: light-dark(#1e4ca0, #b4ccff); }
+}
+
+.coordinator-task-list .design-task-list-panel {
+  .task-list-column-header {
+    background: color-mix(in srgb, var(--tasks-blue) 6%, var(--task-list-surface));
+    color: var(--foreground);
+  }
+
+  .task-row-refreshed:has([data-task-hierarchy="epic"]) { --task-hierarchy-tone: var(--tasks-violet); }
+  .task-row-refreshed:has([data-task-hierarchy="task"]) { --task-hierarchy-tone: var(--tasks-blue); }
+  .task-row-refreshed:has([data-task-hierarchy="subtask"]) { --task-hierarchy-tone: var(--tasks-green); }
+  .task-row-refreshed:has([data-task-hierarchy="request"]) { --task-hierarchy-tone: var(--tasks-amber); }
+
+  .task-row-refreshed:has([data-task-hierarchy]):not([data-selected="true"], [data-current-step="true"]) {
+    background: color-mix(in srgb, var(--task-hierarchy-tone) 4%, transparent);
+  }
+
+  .task-row-refreshed:has([data-task-hierarchy]):not([data-selected="true"], [data-current-step="true"]):is(:hover, :focus-within) {
+    background: color-mix(in srgb, var(--task-hierarchy-tone) 10%, transparent);
+  }
+
+  [data-task-hierarchy] {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    color: var(--task-hierarchy-tone);
+    background: color-mix(in srgb, var(--task-hierarchy-tone) 15%, transparent);
+    border-radius: 6px;
+  }
+
+  [data-slot="task-row-title"] { color: var(--foreground); }
+}
+
+[data-coordinator-more] a[data-more-destination] > svg {
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border-radius: 6px;
+  color: var(--nav-icon-tone, var(--muted-foreground));
+  background: color-mix(in srgb, var(--nav-icon-tone, var(--muted-foreground)) 14%, transparent);
+}
+
+[data-coordinator-more] a[data-more-destination]:is(:hover, :focus-visible, [aria-current="page"]) {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--nav-icon-tone, var(--muted-foreground)) 11%, transparent);
+}
+
+:is([data-canonical-toolbar="skills"], [data-canonical-toolbar="skill-catalog"]) {
+  .design-task-search { --skill-control-tone: light-dark(#2458b8, #93b9ff); }
+  [data-skill-control="sort"] { --skill-control-tone: light-dark(#7541ad, #d1afff); }
+  [aria-label="Scan project workspaces for skills"] { --skill-control-tone: light-dark(#18706d, #7ad8cf); }
+  [data-skill-control="folder"] { --skill-control-tone: light-dark(#8c5308, #f1c17a); }
+
+  :is(.design-task-search, [data-skill-control], [aria-label="Scan project workspaces for skills"]) > svg {
+    color: var(--skill-control-tone);
+  }
+
+  button:is([data-skill-control], [aria-label="Scan project workspaces for skills"]) {
+    background: color-mix(in srgb, var(--skill-control-tone) 6%, var(--background));
+  }
+
+  button:is([data-skill-control], [aria-label="Scan project workspaces for skills"]):not(:disabled):is(:hover, [data-state="open"]) {
+    background: color-mix(in srgb, var(--skill-control-tone) 13%, var(--background));
+  }
+
+  button[data-toolbar-primary] {
+    background: light-dark(#285dba, #98baff);
+    color: light-dark(#fff, #142851);
+  }
+
+  button[data-toolbar-primary]:is(:hover, [data-state="open"]) {
+    background: light-dark(#1e4ca0, #b4ccff);
+  }
+}
+
+:is([data-skill-installed], nav[aria-label="Skills views"] .canonical-tab[aria-current="page"]) {
+  --skill-installed-tone: light-dark(#277447, #91d9ab);
+  background: color-mix(in srgb, var(--skill-installed-tone) 15%, transparent);
+  color: var(--skill-installed-tone);
 }

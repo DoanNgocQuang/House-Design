@@ -1316,6 +1316,12 @@ export function createPluginWorkerHandle(
       return companyId ? { companyId } : null;
     }
 
+    // A job of a plugin configured for one company works for that company. Without a scope, its calls
+    // are refused as ambiguous for as long as any delivered event is open (up to MAX_RPC_TIMEOUT_MS).
+    if (method === "runJob" && proactiveCompanyScopes.size === 1) {
+      return { companyId: [...proactiveCompanyScopes][0]! };
+    }
+
     return null;
   }
 

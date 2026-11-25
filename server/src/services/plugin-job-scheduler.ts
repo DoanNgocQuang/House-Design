@@ -143,16 +143,35 @@ export function createPluginJobScheduler(options: PluginJobSchedulerOptions): Pl
     } catch (err) { activeJobs.delete(job.id); throw err; }
   }
 
+  // A run past its call and settlement limits belongs to a process that stopped before
+  // recording the result. Left open, it would block every later run of its job.
+  async function closeInterrupted(runId: string): Promise<boolean> {
+    return db.transaction(async tx => {
+      const [current] = await tx.select().from(pluginJobRuns).where(eq(pluginJobRuns.id, runId)).for("update");
+      if (!current || !["running", "queued", "pending"].includes(current.status)
+        || activeJobs.has(current.jobId) || pendingSettlements.has(current.jobId)) return false;
+      await pluginJobStore(tx).completeRun(runId, { status: "failed", error: "Interrupted before it finished",
+        durationMs: null });
+      log.warn({ jobId: current.jobId, runId }, "closed an interrupted plugin job run");
+      return true;
+    });
+  }
+
   async function refresh(signal?: AbortSignal) {
     const settlements = await Promise.allSettled([...pendingSettlements.keys()].map(settle));
     const jobs = await db.select().from(pluginJobs).where(eq(pluginJobs.status, "active"));
     const runnable = jobs.filter(job => !unregistered.has(job.pluginId) && workerManager.isRunning(job.pluginId)
       && !activeJobs.has(job.id) && !pendingSettlements.has(job.id) && job.schedule && !validateCron(job.schedule));
-    const outstanding = runnable.length === 0 ? [] : await db.select({ jobId: pluginJobRuns.jobId })
+    const outstanding = runnable.length === 0 ? [] : await db.select({ jobId: pluginJobRuns.jobId, id: pluginJobRuns.id,
+      startedAt: sql<Date>`coalesce(${pluginJobRuns.startedAt}, ${pluginJobRuns.createdAt})`.mapWith(pluginJobRuns.createdAt) })
       .from(pluginJobRuns).where(and(inArray(pluginJobRuns.jobId, runnable.map(job => job.id)),
         inArray(pluginJobRuns.status, ["pending", "queued", "running"])));
     const blocked = new Set(outstanding.map(run => run.jobId));
     const now = new Date();
+    for (const run of outstanding) {
+      if (run.startedAt.getTime() > now.getTime() - jobTimeoutMs - settlementTimeoutMs) continue;
+      if (await closeInterrupted(run.id)) blocked.delete(run.jobId);
+    }
     const dispatches: Promise<unknown>[] = [];
     next = null;
     for (const job of runnable) {

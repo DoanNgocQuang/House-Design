@@ -479,3 +479,40 @@ export async function ensureBundledPlugins(
     }
   }
 }
+
+/** Repository-built plugins (Agent Office, Telegram) that ship inside the Docker image. */
+export const WORKSPACE_PLUGIN_DIRS = ["agent-pixels", "telegram"] as const;
+
+export function workspacePluginPaths(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (env.PAPERCLIP_INSTALL_WORKSPACE_PLUGINS !== "true") return [];
+  const root = env.PAPERCLIP_WORKSPACE_PLUGIN_ROOT?.trim() || "/app/integrations/workspace-plugins/dist";
+  return WORKSPACE_PLUGIN_DIRS.map((dir) => path.join(root, dir));
+}
+
+/**
+ * Install each workspace plugin that is not registered yet. Existing installs are left
+ * untouched (the entrypoint's restore step keeps their files current). Never throws.
+ */
+export async function ensureWorkspacePlugins(
+  localPaths: readonly string[],
+  deps: Pick<BundledPluginProvisionerDeps, "registry" | "loader" | "lifecycle" | "logger">,
+): Promise<void> {
+  for (const localPath of localPaths) {
+    try {
+      const manifest = await deps.loader.loadManifest(localPath);
+      if (!manifest) {
+        deps.logger.info({ pluginPath: localPath }, "workspace plugin bundle not present; skipping auto-install");
+        continue;
+      }
+      if (await deps.registry.getByKey(manifest.id)) continue;
+      const discovered = await deps.loader.installPlugin({ localPath });
+      const installed = discovered.manifest ? await deps.registry.getByKey(discovered.manifest.id) : null;
+      if (installed) {
+        await deps.lifecycle.load(installed.id);
+        deps.logger.info({ pluginKey: installed.pluginKey, pluginPath: localPath }, "workspace plugin auto-installed");
+      }
+    } catch (err) {
+      deps.logger.error({ err, pluginPath: localPath }, "Failed to auto-install workspace plugin; continuing boot");
+    }
+  }
+}

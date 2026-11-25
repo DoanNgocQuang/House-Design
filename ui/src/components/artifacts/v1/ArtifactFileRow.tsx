@@ -8,7 +8,7 @@ import { ImageGalleryModal } from "@/components/ImageGalleryModal";
 import { DataCard } from "@/components/artifacts/RichArtifactCards";
 import { Button } from "@/components/ui/button";
 import { CSV_PREVIEW_MAX_BYTES, loadArtifactCsv } from "@/lib/artifact-card-data";
-import { isTextAttachment } from "@/lib/issue-attachments";
+import { opensInTaskPanel } from "@/lib/issue-attachments";
 import { isImageLikeOutput, isVideoLikeOutput } from "@/lib/issue-output";
 import type { FileRowSource } from "./adapters";
 import { ArtifactRow } from "./ArtifactRow";
@@ -47,7 +47,7 @@ export function ArtifactFileRow({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [csvRequested, setCsvRequested] = useState(false);
   const picture = Boolean(contentPath) && (isImageLikeOutput(contentType, filename) || isVideoLikeOutput(contentType, filename));
-  const textTab = Boolean(openTextAttachment && attachmentId && isTextAttachment({ contentType, originalFilename: filename }));
+  const textTab = Boolean(openTextAttachment && attachmentId && opensInTaskPanel({ contentType, originalFilename: filename }));
   const csv = contentType.split(";")[0] === "text/csv" || /\.csv$/i.test(filename);
   const tooLarge = byteSize !== null && byteSize > CSV_PREVIEW_MAX_BYTES;
   const localCsv = csv && /^\/api\/attachments\/[a-zA-Z0-9-]+\/content$/.test(contentPath);

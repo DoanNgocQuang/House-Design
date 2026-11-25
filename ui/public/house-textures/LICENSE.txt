@@ -1,0 +1,6 @@
+Textures and HDRI in this folder come from Poly Haven (https://polyhaven.com), released under CC0 (public domain).
+1K JPG maps (diff = base color, nor = OpenGL normal, rough = roughness):
+beige_wall_001, grey_plaster_02, clay_roof_tiles_02, fine_grained_wood, floor_tiles_06,
+large_floor_tiles_02, large_sandstone_blocks, leafy_grass, gravel_floor.
+sky_1k.hdr = kloofendal_48d_partly_cloudy_puresky (1K).
+Used by the 3D house viewer (ui/src/lib/house-materials.ts) and the Blender render script of the house-builder skill.

@@ -1,4 +1,6 @@
 import { authorizationReadScope } from "./services/authorization-read-scope.js";
+import { ensureStarterCompany } from "./services/starter-company.js";
+import { ensureWorkspacePlugins, workspacePluginPaths } from "./services/bundled-plugins.js";
 import type { IdleDeadlineOwners } from "./services/idle-deadline-types.js";
 import { startMcpClientMirrorSync } from "./services/public-mcp/client-mirror-sync.js";
 import { registerIdleMcpOwners } from "./services/public-mcp/idle-sleep-proof.js";
@@ -1071,6 +1073,7 @@ export async function createApp(
       bindHost: opts.bindHost,
       allowedHostnames: opts.allowedHostnames,
       authPublicBaseUrl: opts.authPublicBaseUrl,
+      onFirstAdminClaimed: (userId) => void ensureStarterCompany(db, opts.storageService, { userId }),
     }),
   );
   let publicMcpEvents: PublicMcpEvents | null = null;
@@ -1413,6 +1416,7 @@ export async function createApp(
     // still enter upgrade_pending so enabling them requires an operator decision.
     { reinstallUninstalled: managedAutoInstallKeys !== null, preservePackagePath: managedAutoInstallKeys !== null },
   )
+    .then(() => ensureWorkspacePlugins(workspacePluginPaths(), { registry: pluginRegistry, loader, lifecycle, logger }))
     .then(() => loader.loadAll())
     .then((result) => {
       if (!result) return;

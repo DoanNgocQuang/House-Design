@@ -236,6 +236,7 @@ import { migrateCloudConfiguration } from "./services/cloud-configuration-migrat
 import { qualifyCloudConfigurationForCurrentImage } from "./services/cloud-configuration-qualification.js";
 import { systemdNotify } from "./services/systemd-notify.js";
 import { flushInFlightRunLogMirrors } from "./services/run-log-store.js";
+import { ensureStarterCompany, firstInstanceAdminId, starterCompanyDir } from "./services/starter-company.js";
 import {
   createEmbeddedPostgresSupervisor,
   type EmbeddedPostgresSupervisor,
@@ -2037,6 +2038,11 @@ async function startServerWithDatabaseTeardown(
       await step("environment_lease_cleanup", startEnvironmentCleanup);
       await step("archive_notification_worker", () => registerDecisionArchiveDeliveryWork(deliveryWork, retentionExecutor,
         () => !isIdleTaskDrainActive() && !isWarmStandby() && !heartbeatSchedulerStopped).ready);
+      // Instances whose first admin already exists still get the starter company once (marker file guards repeats).
+      await step("starter_company", async () => {
+        const adminId = starterCompanyDir() ? await firstInstanceAdminId(db as any) : null;
+        if (adminId) void ensureStarterCompany(db as any, storageService, { userId: adminId });
+      });
       await step("approval_queue_seeding", () => registerApprovalQueueSeedingWork(deliveryWork, approvalQueueSeedingService(db as any),
         () => !isIdleTaskDrainActive() && !isWarmStandby() && !heartbeatSchedulerStopped).ready);
       await step("approval_retention", () => registerApprovalRetentionWork(deliveryWork, approvalRetentionService(db as any),

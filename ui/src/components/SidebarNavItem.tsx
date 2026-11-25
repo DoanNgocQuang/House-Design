@@ -43,6 +43,7 @@ interface SidebarNavItemProps {
    */
   iconNode?: ReactNode;
   end?: boolean;
+  openInNewTab?: boolean;
   className?: string;
   labelClassName?: string;
   badge?: number;
@@ -77,6 +78,7 @@ export function SidebarNavItem({
   icon: Icon,
   iconNode,
   end,
+  openInNewTab = false,
   className,
   labelClassName,
   badge,
@@ -123,6 +125,8 @@ export function SidebarNavItem({
       to={to}
       state={SIDEBAR_SCROLL_RESET_STATE}
       end={end}
+      target={openInNewTab ? "_blank" : undefined}
+      rel={openInNewTab ? "noopener" : undefined}
       aria-label={railAriaLabel}
       {...linkHandlers}
       onClick={() => { if (isMobile) setSidebarOpen(false); }}

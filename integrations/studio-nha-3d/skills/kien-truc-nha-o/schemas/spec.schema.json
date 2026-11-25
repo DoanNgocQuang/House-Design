@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "spec.json - yêu cầu nhà đã chuẩn hoá (do agent Phân tích viết)",
+  "type": "object",
+  "required": [
+    "name",
+    "source",
+    "lot",
+    "floors",
+    "floor_height",
+    "roof",
+    "rooms",
+    "assumptions"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Tên ngắn, ví dụ 'Nhà phố 2 tầng 5x20m'"
+    },
+    "source": {
+      "enum": [
+        "text",
+        "image",
+        "text+image"
+      ]
+    },
+    "source_notes": {
+      "type": "string",
+      "description": "Những gì thấy được trong ảnh (nếu có)"
+    },
+    "house_type": {
+      "enum": [
+        "nha-pho",
+        "nha-ong",
+        "biet-thu",
+        "nha-vuon",
+        "nha-cap-4",
+        "nha-hien-dai",
+        "khac"
+      ],
+      "description": "Loại nhà, xem bảng 'Kiểu nhà' trong references/kich-thuoc-chuan.md"
+    },
+    "lot": {
+      "type": "object",
+      "required": [
+        "width",
+        "depth"
+      ],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "floors": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6
+    },
+    "floor_height": {
+      "type": "number",
+      "minimum": 2.6,
+      "maximum": 4.5
+    },
+    "roof": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "flat",
+            "gable",
+            "hip",
+            "shed",
+            "mansard",
+            "tiered"
+          ]
+        },
+        "pitch_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "slope_to": {
+          "enum": [
+            "front",
+            "back",
+            "left",
+            "right"
+          ],
+          "description": "Chỉ cho mái lệch (shed): phía nước chảy xuống, mặc định back"
+        }
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "description": "Danh sách phòng mong muốn, chưa có toạ độ",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "floor"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "living",
+              "kitchen",
+              "dining",
+              "bedroom",
+              "wc",
+              "garage",
+              "stairs",
+              "hall",
+              "balcony",
+              "worship",
+              "laundry",
+              "storage",
+              "other"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          },
+          "area_m2": {
+            "type": "number",
+            "description": "Diện tích mong muốn, có thể bỏ trống"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "furniture_notes": {
+            "type": "string",
+            "description": "Yêu cầu nội thất của phòng, ví dụ 'sofa chữ L, kệ tivi', 'không cần nội thất'"
+          }
+        }
+      }
+    },
+    "entrance": {
+      "type": "string",
+      "description": "Cửa chính ở đâu, ví dụ 'mặt tiền, qua gara'"
+    },
+    "assumptions": {
+      "type": "array",
+      "description": "Mọi giá trị không có trong yêu cầu gốc, kèm lý do",
+      "items": {
+        "type": "string"
+      }
+    },
+    "colors": {
+      "type": "object",
+      "description": "Màu chủ dự án yêu cầu, đã đổi sang #rrggbb (ví dụ 'mái xanh rêu' -> categories.roof)",
+      "properties": {
+        "categories": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "floor",
+              "wall",
+              "door",
+              "glass",
+              "stairs",
+              "garden",
+              "fence",
+              "roof"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "parts": {
+          "type": "object",
+          "description": "partId -> màu. partId xem trong <ten-san-pham>.glb (extras.partId) hoặc comment 'Bảng màu' trên task",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        }
+      }
+    },
+    "furniture": {
+      "type": "boolean",
+      "default": true,
+      "description": "false nếu chủ dự án nói không cần nội thất"
+    },
+    "site": {
+      "type": "object",
+      "description": "Yêu cầu sân vườn/hàng rào của chủ dự án",
+      "properties": {
+        "garden": {
+          "type": "string",
+          "description": "Mô tả sân vườn mong muốn, ví dụ 'sân trước lát gạch, vườn sau trồng cây'"
+        },
+        "fence": {
+          "type": "string",
+          "description": "Mô tả hàng rào/cổng, ví dụ 'rào 4 phía, cổng rộng 3.5m ở mặt tiền'"
+        }
+      }
+    },
+    "style": {
+      "type": "string",
+      "description": "Phong cách, ví dụ 'hiện đại mái lệch', 'mái Thái', 'mái Nhật', 'tân cổ điển', 'nhà vườn mái ngói'"
+    },
+    "shape": {
+      "enum": [
+        "chu-nhat",
+        "chu-L",
+        "chu-U",
+        "giat-cap"
+      ],
+      "description": "Hình khối nhìn từ trên xuống. giat-cap = tầng trên nhỏ hơn tầng dưới, phần lộ ra làm sân thượng"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "san-thuong",
+          "gieng-troi",
+          "thong-tang",
+          "ban-cong",
+          "gara",
+          "tang-ham",
+          "tang-lung",
+          "hien-cot",
+          "vach-kinh",
+          "lam-che-nang"
+        ]
+      },
+      "description": "Hạng mục đặc biệt chủ dự án muốn hoặc đã giả định"
+    }
+  }
+}

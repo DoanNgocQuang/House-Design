@@ -13,6 +13,8 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      # The last stage is the hosted variant; its extra server node_modules breaks Paperclip Runner's provider lookup.
+      target: production
     # Ceiling on processes. The image makes tini PID 1 so orphaned agent
     # descendants are reaped instead of piling up as zombies; this is the
     # backstop if something leaks anyway — the container hits its own limit and
@@ -25,6 +27,9 @@ services:
     environment:
       HOST: "0.0.0.0"
       PAPERCLIP_HOME: "/paperclip"
+      PAPERCLIP_RESTORE_WORKSPACE_PLUGINS: "true"
+      # Studio Nha 3D: 4 cap Yeu cau -> Epic (CEO giao PM) -> Task -> Sub-task (mac dinh upstream: 2)
+      PAPERCLIP_MAX_AGENT_TASK_DEPTH: "4"
 
       # ── LLM provider keys (at least one is needed for agents to work) ──
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
@@ -48,3 +53,5 @@ services:
     volumes:
       # Persistent data directory (database, agent workspaces, uploads)
       - "${PAPERCLIP_DATA_DIR:-../data/docker-paperclip}:/paperclip"
+      # Shop online project workspace (D:\AI-company\shop online)
+      - "../../shop online:/workspace/shop-online"

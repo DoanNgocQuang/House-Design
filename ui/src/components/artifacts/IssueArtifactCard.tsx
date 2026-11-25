@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { isImageLikeOutput, isVideoLikeOutput } from "@/lib/issue-output";
-import { attachmentDownloadPath, isTextAttachment } from "@/lib/issue-attachments";
+import { attachmentDownloadPath, isTextAttachment, opensInTaskPanel } from "@/lib/issue-attachments";
 import { workProductHref } from "@/lib/issue-artifacts";
 import { formatDateTime } from "@/lib/utils";
 import {
@@ -58,7 +58,7 @@ export function IssueArtifactFile(props: IssueArtifactFileProps) {
   const { metadata = null, attachmentId } = props;
   const openGallery = useContext(IssueGalleryContext);
   const openTextAttachment = useContext(TextAttachmentContext);
-  const openTextAction = openTextAttachment && attachmentId && isTextAttachment({
+  const openTextAction = openTextAttachment && attachmentId && opensInTaskPanel({
     contentType: props.contentType,
     originalFilename: props.filename,
   }) ? (

@@ -44,6 +44,9 @@ export function setPluginEventBus(bus: PluginEventBus): void {
 
 function eventTypeForActivityAction(action: string): PluginEventType | null {
   if (PLUGIN_EVENT_SET.has(action)) return action as PluginEventType;
+  if (action === "issue.thread_interaction_created") return "issue.interaction.created";
+  // Answered, accepted, withdrawn, expired...: subscribers read the current status.
+  if (action.startsWith("issue.thread_interaction_")) return "issue.interaction.updated";
   return ACTIVITY_ACTION_TO_PLUGIN_EVENT[action.replaceAll(".", "_")] ?? null;
 }
 

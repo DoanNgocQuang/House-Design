@@ -1,6 +1,5 @@
 import { FILE_DROP_TARGET_ATTRIBUTE } from "@/lib/file-drop-target";
 import { TextAttachmentContext } from "@/context/TextAttachmentContext";
-import { isTextAttachment } from "@/lib/issue-attachments";
 import { useContext, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { IssueAttachment } from "@paperclipai/shared";
@@ -18,6 +17,7 @@ import {
   isImageAttachment,
   isMarkdownAttachment,
   isVideoAttachment,
+  opensInTaskPanel,
 } from "@/lib/issue-attachments";
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
@@ -60,7 +60,7 @@ function AttachmentActions({
 }) {
   const openText = useContext(TextAttachmentContext);
   const openInPanel = (event: React.MouseEvent) => {
-    if (openText && isTextAttachment(attachment) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); openText(attachment.id, attachmentFilename(attachment)); }
+    if (openText && opensInTaskPanel(attachment) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); openText(attachment.id, attachmentFilename(attachment)); }
   };
   const filename = attachmentFilename(attachment);
   return (
@@ -121,7 +121,7 @@ function MarkdownAttachmentCard({
 }) {
   const openText = useContext(TextAttachmentContext);
   const openInPanel = (event: React.MouseEvent) => {
-    if (openText && isTextAttachment(attachment) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); openText(attachment.id, attachmentFilename(attachment)); }
+    if (openText && opensInTaskPanel(attachment) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); openText(attachment.id, attachmentFilename(attachment)); }
   };
   const filename = attachmentFilename(attachment);
   const { data, isLoading, error } = useQuery({
@@ -200,7 +200,7 @@ function GenericAttachmentRow({
 }) {
   const openText = useContext(TextAttachmentContext);
   const openInPanel = (event: React.MouseEvent) => {
-    if (openText && isTextAttachment(attachment) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); openText(attachment.id, attachmentFilename(attachment)); }
+    if (openText && opensInTaskPanel(attachment) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); openText(attachment.id, attachmentFilename(attachment)); }
   };
   const filename = attachmentFilename(attachment);
   return (

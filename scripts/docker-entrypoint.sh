@@ -7,6 +7,13 @@ log() {
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) docker-entrypoint.sh: $*"
 }
 
+restore_workspace_plugins() {
+    if [ "${PAPERCLIP_RESTORE_WORKSPACE_PLUGINS:-false}" = "true" ]; then
+        "$@" node /app/integrations/workspace-plugins/restore.mjs ||
+            log "workspace plugin restore failed; continuing startup"
+    fi
+}
+
 log "starting"
 
 # Capture runtime UID/GID from environment variables, defaulting to 1000
@@ -23,6 +30,7 @@ if [ "$(id -u)" -ne 0 ]; then
     if [ "$(id -u)" -ne "$PUID" ] || [ "$(id -g)" -ne "$PGID" ]; then
         echo "docker-entrypoint.sh: running unprivileged as $(id -u):$(id -g); cannot remap to requested ${PUID}:${PGID}" >&2
     fi
+    restore_workspace_plugins
     log "starting app as $(id -u):$(id -g)"
     exec "$@"
 fi
@@ -148,5 +156,6 @@ if [ -d "$home_dir" ]; then
     fi
 fi
 
+restore_workspace_plugins gosu node
 log "starting app as node"
 exec gosu node "$@"

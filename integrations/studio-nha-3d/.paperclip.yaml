@@ -1,0 +1,36 @@
+schema: paperclip/v1
+# Runtime giống công ty QLDA. Tài khoản AI gắn theo từng công ty: sau khi công ty được tạo,
+# chủ dự án đăng nhập tài khoản Claude/Codex trong trang Apps rồi chọn tài khoản cho từng agent.
+agents:
+  ceo:
+    adapter:
+      type: codex_local
+      config: {}
+  pm:
+    adapter:
+      type: codex_local
+      config: {}
+  phan-tich:
+    adapter:
+      type: claude_local
+      config:
+        model: claude-opus-5-5
+  kien-truc-su:
+    adapter:
+      type: claude_local
+      config:
+        model: claude-opus-5-5
+  noi-that:
+    adapter:
+      type: claude_local
+      config:
+        model: claude-opus-5-5
+  dung-hinh:
+    adapter:
+      type: codex_local
+      config: {}
+  kiem-dinh:
+    adapter:
+      type: claude_local
+      config:
+        model: claude-sonnet-5-5

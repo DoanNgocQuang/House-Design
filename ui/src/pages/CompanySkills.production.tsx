@@ -1217,7 +1217,7 @@ export function DiscoveryGrid({
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" data-skill-control="sort">
                 <span className="text-muted-foreground">Sort</span>
                 <span className="ml-1.5">{DISCOVERY_SORT_LABELS[sort]}</span>
                 <ChevronDown className="ml-1 h-3.5 w-3.5" />
@@ -1274,7 +1274,7 @@ export function DiscoveryGrid({
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="default">
+              <Button size="sm" variant="default" data-toolbar-primary>
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 New
                 <ChevronDown className="ml-1 h-3.5 w-3.5" />
@@ -1312,7 +1312,7 @@ export function DiscoveryGrid({
             </div>
           ) : null}
           {onCreateFolder && !showFolderRail ? (
-            <Button variant="outline" size="sm" onClick={onCreateFolder}>
+            <Button variant="outline" size="sm" onClick={onCreateFolder} data-skill-control="folder">
               <Plus className="mr-1 h-3.5 w-3.5" />
               New folder
             </Button>

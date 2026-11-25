@@ -1,0 +1,309 @@
+import { escapeMarkdownV2, truncateAtWord } from "./telegram-api.js";
+import { AGENT_ERROR_TRUNCATE_LENGTH } from "./constants.js";
+import { str } from "./coerce.js";
+function esc(s) {
+    return escapeMarkdownV2(s);
+}
+function bold(s) {
+    return `*${esc(s)}*`;
+}
+function code(s) {
+    return `\`${esc(s)}\``;
+}
+function isExternalUrl(url) {
+    return !!url && url.startsWith("https://");
+}
+function issueLink(identifier, opts) {
+    if (opts?.baseUrl && opts?.issuePrefix) {
+        const url = `${opts.baseUrl}/${opts.issuePrefix}/issues/${identifier}`;
+        return `[${esc(identifier)}](${url})`;
+    }
+    return bold(identifier);
+}
+function issueButton(identifier, opts) {
+    if (opts?.baseUrl && opts?.issuePrefix && isExternalUrl(opts.baseUrl)) {
+        return { text: `Open ${identifier} ↗`, url: `${opts.baseUrl}/${opts.issuePrefix}/issues/${identifier}` };
+    }
+    return null;
+}
+function agentButton(agentId, label, publicUrl) {
+    if (publicUrl && isExternalUrl(publicUrl)) {
+        return { text: label, url: `${publicUrl}/agents/${agentId}` };
+    }
+    return null;
+}
+function isUuidLike(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+function displayAgentName(value) {
+    return isUuidLike(value) ? `Agent ${value.slice(0, 8)}` : value;
+}
+function runButton(agentId, runId, publicUrl) {
+    if (publicUrl && isExternalUrl(publicUrl) && runId) {
+        return { text: "View Run ↗", url: `${publicUrl}/agents/${agentId}/runs/${runId}` };
+    }
+    return null;
+}
+// Renders only when the inline error text was cut, and takes runButton's
+// place in the keyboard row rather than sitting alongside it: the run
+// dashboard exposes no error-anchored URL, so both buttons would point at
+// the identical `/runs/:runId` page. Two labels for one URL reads as
+// broken, so the more accurate label ("Full error", surfaced right below
+// the truncated text it completes) wins the slot; formatAgentError falls
+// back to runButton when the message wasn't truncated.
+function fullErrorButton(agentId, runId, publicUrl) {
+    if (publicUrl && isExternalUrl(publicUrl) && runId) {
+        return { text: "Full error ↗", url: `${publicUrl}/agents/${agentId}/runs/${runId}` };
+    }
+    return null;
+}
+function classifyAgentError(errorMessage) {
+    if (/timed?\s*out|timeout/i.test(errorMessage))
+        return "Agent Timeout";
+    if (/limit|rate.?limit|quota/i.test(errorMessage))
+        return "Agent Rate Limit";
+    return "Agent Error";
+}
+// Issue-lifecycle notifications (created/assigned/done) are
+// silent for low/medium priority issues so routine churn doesn't buzz the phone; high/critical
+// priority stays loud, and unknown priority defaults to loud so we never silently swallow a
+// notification we can't classify. Approvals and agent errors are always loud, unconditionally.
+const SILENT_ISSUE_PRIORITIES = new Set(["low", "medium"]);
+function silentForPriority(priority) {
+    return priority !== null && SILENT_ISSUE_PRIORITIES.has(priority.toLowerCase());
+}
+export function formatIssueCreated(event, opts) {
+    const p = event.payload;
+    const identifier = str(p.identifier, event.entityId);
+    const title = str(p.title, "Untitled");
+    const status = p.status ? str(p.status) : null;
+    const priority = p.priority ? str(p.priority) : null;
+    const assigneeName = p.assigneeName ? str(p.assigneeName) : null;
+    const projectName = p.projectName ? str(p.projectName) : null;
+    const lines = [
+        `${esc("📋")} ${bold("Issue Created")}: ${issueLink(identifier, opts)}`,
+        bold(title),
+    ];
+    const meta = [];
+    if (status)
+        meta.push(`Status: ${code(status)}`);
+    if (priority)
+        meta.push(`Priority: ${code(priority)}`);
+    if (assigneeName)
+        meta.push(`Assignee: ${esc(assigneeName)}`);
+    if (projectName)
+        meta.push(`Project: ${esc(projectName)}`);
+    if (meta.length > 0)
+        lines.push(meta.join(" \\| "));
+    if (p.description) {
+        const desc = truncateAtWord(str(p.description), 200);
+        lines.push(`\n${esc(">")} ${esc(desc)}`);
+    }
+    const button = issueButton(identifier, opts);
+    return {
+        text: lines.join("\n"),
+        options: {
+            parseMode: "MarkdownV2",
+            ...(silentForPriority(priority) ? { disableNotification: true } : {}),
+            ...(button ? { inlineKeyboard: [[button]] } : {}),
+        },
+    };
+}
+export function formatIssueAssigned(event, opts) {
+    const p = event.payload;
+    const prev = p._previous ?? {};
+    const identifier = str(p.identifier, event.entityId);
+    const title = str(p.title, "Untitled");
+    const priority = p.priority ? str(p.priority) : null;
+    const assigneeName = p.assigneeName ? str(p.assigneeName) : null;
+    const prevAssigneeName = prev.assigneeName ? str(prev.assigneeName) : null;
+    const lines = [
+        `${esc("🎯")} ${bold("Issue Assigned")}: ${issueLink(identifier, opts)}`,
+        bold(title),
+    ];
+    if (assigneeName) {
+        lines.push(prevAssigneeName
+            ? `Assignee: ${esc(prevAssigneeName)} ${esc("→")} ${esc(assigneeName)}`
+            : `Assignee: ${esc(assigneeName)}`);
+    }
+    else {
+        lines.push(esc("Unassigned"));
+    }
+    const button = issueButton(identifier, opts);
+    return {
+        text: lines.join("\n"),
+        options: {
+            parseMode: "MarkdownV2",
+            ...(silentForPriority(priority) ? { disableNotification: true } : {}),
+            ...(button ? { inlineKeyboard: [[button]] } : {}),
+        },
+    };
+}
+export function formatIssueDone(event, opts) {
+    const p = event.payload;
+    const identifier = str(p.identifier, event.entityId);
+    const title = str(p.title);
+    const priority = p.priority ? str(p.priority) : null;
+    const comment = p.comment ? str(p.comment) : null;
+    const lines = [
+        `${esc("✅")} ${bold("Issue Completed")}: ${issueLink(identifier, opts)}`,
+        `${bold(title)} ${esc("is now done.")}`,
+    ];
+    if (comment) {
+        const truncated = truncateAtWord(comment, 300);
+        lines.push(`\n${esc(">")} ${esc(truncated)}`);
+    }
+    const button = issueButton(identifier, opts);
+    return {
+        text: lines.join("\n"),
+        options: {
+            parseMode: "MarkdownV2",
+            ...(silentForPriority(priority) ? { disableNotification: true } : {}),
+            ...(button ? { inlineKeyboard: [[button]] } : {}),
+        },
+    };
+}
+export function formatApprovalCreated(event, opts) {
+    const p = event.payload;
+    const approvalType = str(p.type, "unknown");
+    const approvalId = str(p.approvalId, event.entityId);
+    const title = str(p.title, "Approval Requested");
+    const description = p.description ? str(p.description) : null;
+    const agentName = p.agentName ? str(p.agentName) : null;
+    const lines = [
+        `${esc("🔔")} ${bold("Approval Requested")}`,
+        bold(title),
+    ];
+    if (agentName)
+        lines.push(`Agent: ${esc(agentName)} \\| Type: ${code(approvalType)}`);
+    if (description)
+        lines.push(`\n${esc(truncateAtWord(description, 300))}`);
+    // Add linked issues if present
+    const linkedIssues = Array.isArray(p.linkedIssues) ? p.linkedIssues : [];
+    if (linkedIssues.length > 0) {
+        lines.push(`\n${bold(`Linked Issues (${String(linkedIssues.length)})`)}`);
+        for (const issue of linkedIssues.slice(0, 5)) {
+            const issueId = str(issue.identifier, "?");
+            const issueParts = [`${issueLink(issueId, opts)} ${esc(str(issue.title))}`];
+            const issueMeta = [];
+            if (issue.status)
+                issueMeta.push(str(issue.status));
+            if (issue.priority)
+                issueMeta.push(str(issue.priority));
+            if (issue.assignee)
+                issueMeta.push(`-> ${str(issue.assignee)}`);
+            if (issueMeta.length > 0)
+                issueParts.push(`\\(${esc(issueMeta.join(" | "))}\\)`);
+            lines.push(issueParts.join(" "));
+        }
+    }
+    const keyboard = [
+        [
+            { text: "Approve", callback_data: `approve_${approvalId}` },
+            { text: "Reject", callback_data: `reject_${approvalId}` },
+        ],
+    ];
+    // Add deep link to the first linked issue if available
+    if (linkedIssues.length > 0) {
+        const firstIssueId = str(linkedIssues[0].identifier);
+        if (firstIssueId) {
+            const btn = issueButton(firstIssueId, opts);
+            if (btn)
+                keyboard.push([btn]);
+        }
+    }
+    return {
+        text: lines.join("\n"),
+        options: {
+            parseMode: "MarkdownV2",
+            inlineKeyboard: keyboard,
+        },
+    };
+}
+export function formatAgentError(event, opts) {
+    const p = event.payload;
+    const agentId = str(p.agentId, event.entityId);
+    const rawAgentName = str(p.agentName, str(p.name, agentId));
+    const agentName = displayAgentName(rawAgentName);
+    const errorMessage = str(p.error, str(p.message, "Unknown error"));
+    const runId = p.runId ? str(p.runId) : null;
+    const companyName = p.companyName ? str(p.companyName) : null;
+    const issueIdentifier = p.issueIdentifier ? str(p.issueIdentifier) : null;
+    const issueTitle = p.issueTitle ? str(p.issueTitle) : null;
+    const lines = [
+        `${esc("❌")} ${bold(classifyAgentError(errorMessage))}`,
+        `Agent: ${bold(agentName)}`,
+    ];
+    // The compact label hides the identifier it was derived from, and the "View Agent"
+    // button only exists when a public base URL is configured. Keep the full id in a
+    // metadata line so error notifications stay correlatable without one.
+    if (agentName !== rawAgentName)
+        lines.push(`Agent ID: ${code(rawAgentName)}`);
+    if (companyName)
+        lines.push(`Company: ${esc(companyName)}`);
+    if (issueIdentifier) {
+        lines.push(issueTitle
+            ? `Issue: ${issueLink(issueIdentifier, opts)} ${esc("—")} ${esc(issueTitle)}`
+            : `Issue: ${issueLink(issueIdentifier, opts)}`);
+    }
+    const isTruncated = errorMessage.length > AGENT_ERROR_TRUNCATE_LENGTH;
+    lines.push(`\n${code(truncateAtWord(errorMessage, AGENT_ERROR_TRUNCATE_LENGTH))}`);
+    // fullErrorButton and runButton point at the same run page, so only one
+    // occupies the slot — never both.
+    const fullError = isTruncated ? fullErrorButton(agentId, runId, opts?.baseUrl) : null;
+    const buttons = [
+        fullError,
+        fullError ? null : runButton(agentId, runId, opts?.baseUrl),
+        issueIdentifier ? issueButton(issueIdentifier, opts) : null,
+        agentButton(agentId, "View Agent ↗", opts?.baseUrl),
+    ].filter((button) => Boolean(button));
+    return {
+        text: lines.join("\n"),
+        options: {
+            parseMode: "MarkdownV2",
+            ...(buttons.length > 0 ? { inlineKeyboard: [buttons] } : {}),
+        },
+    };
+}
+export function formatAgentRunStarted(event, opts) {
+    const p = event.payload;
+    const agentId = str(p.agentId, event.entityId);
+    const agentName = displayAgentName(str(p.agentName, agentId));
+    const runId = p.runId ? str(p.runId) : null;
+    const buttons = [];
+    if (opts?.baseUrl && isExternalUrl(opts.baseUrl)) {
+        const url = runId
+            ? `${opts.baseUrl}/agents/${agentId}/runs/${runId}`
+            : `${opts.baseUrl}/agents/${agentId}`;
+        buttons.push({ text: "View Run ↗", url });
+    }
+    return {
+        text: `${esc("▶️")} ${bold(agentName)} ${esc("started run")}`,
+        options: {
+            parseMode: "MarkdownV2",
+            disableNotification: true,
+            ...(buttons.length > 0 ? { inlineKeyboard: [buttons] } : {}),
+        },
+    };
+}
+export function formatAgentRunFinished(event, opts) {
+    const p = event.payload;
+    const agentId = str(p.agentId, event.entityId);
+    const agentName = displayAgentName(str(p.agentName, agentId));
+    const runId = p.runId ? str(p.runId) : null;
+    const buttons = [];
+    if (opts?.baseUrl && isExternalUrl(opts.baseUrl)) {
+        const url = runId
+            ? `${opts.baseUrl}/agents/${agentId}/runs/${runId}`
+            : `${opts.baseUrl}/agents/${agentId}`;
+        buttons.push({ text: "View Run ↗", url });
+    }
+    return {
+        text: `${esc("✅")} ${bold(agentName)} ${esc("completed run")}`,
+        options: {
+            parseMode: "MarkdownV2",
+            disableNotification: true,
+            ...(buttons.length > 0 ? { inlineKeyboard: [buttons] } : {}),
+        },
+    };
+}

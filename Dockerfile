@@ -327,6 +327,7 @@ RUN node server/scripts/prepare-runner-vendor.mjs
 ARG PAPERCLIP_BUILD_COMMIT=""
 RUN pnpm --filter @paperclipai/ui build
 RUN pnpm --filter @paperclipai/plugin-sdk build
+RUN node integrations/workspace-plugins/build.mjs
 # The server build runs scripts/write-build-stamp.mjs, which stamps the built
 # commit into dist/build-info.json. The build context has no .git, so the
 # script reads PAPERCLIP_BUILD_COMMIT instead. Docker exposes an ARG to the
@@ -387,6 +388,25 @@ RUN echo "cli-tools-epoch: ${CLI_TOOLS_CACHE_EPOCH}" \
   && mkdir -p /paperclip \
   && chown node:node /paperclip
 
+# Blender (official LTS build: Cycles + OpenImageDenoise + bundled Python) for photoreal house renders
+# (house-builder skill: house_builder.py render). Own layer before the app copy so code changes keep it cached.
+# Mirror first (download.blender.org sits behind a bot check); the pinned SHA-256 guards either source.
+ARG BLENDER_VERSION=4.5.17
+ARG BLENDER_SHA256=b7d09d1aa7c346fed1e56390e815dbf1589d47324734fbad9e2007fe75ca0b8d
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends xz-utils libx11-6 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libsm6 libgl1 libegl1 \
+  && rm -rf /var/lib/apt/lists/* \
+  && f="blender-${BLENDER_VERSION}-linux-x64.tar.xz" && cd /tmp \
+  && (curl -fSL --retry 5 --retry-all-errors -o "$f" "https://ftp.nluug.nl/pub/graphics/blender/release/Blender${BLENDER_VERSION%.*}/$f" \
+      || curl -fSL --retry 5 --retry-all-errors -o "$f" "https://download.blender.org/release/Blender${BLENDER_VERSION%.*}/$f") \
+  && echo "${BLENDER_SHA256}  $f" | sha256sum -c - \
+  && mkdir -p /opt/blender && tar -xJf "$f" -C /opt/blender --strip-components=1 && rm "$f" \
+  && ln -s /opt/blender/blender /usr/local/bin/blender \
+  && blender --version | head -1
+
+# SVG drawings become PNG previews (Telegram); without a font their labels render as boxes.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
+
 COPY --from=tailscale-client /out/tailscale /out/tailscaled /usr/local/bin/
 COPY --from=tailscale-client /out/LICENSE /usr/local/share/licenses/tailscale/LICENSE
 RUN gosu node tailscale version && gosu node tailscaled --version
@@ -438,7 +458,12 @@ ENV NODE_ENV=production \
   PAPERCLIP_DEPLOYMENT_MODE=authenticated \
   PAPERCLIP_DEPLOYMENT_EXPOSURE=private \
   OPENCODE_ALLOW_ALL_MODELS=true \
-  GEMINI_SANDBOX=false
+  GEMINI_SANDBOX=false \
+  PAPERCLIP_STARTER_COMPANY_DIR=/app/integrations/studio-nha-3d \
+  PAPERCLIP_INSTALL_WORKSPACE_PLUGINS=true \
+  PAPERCLIP_RESTORE_WORKSPACE_PLUGINS=true \
+  PAPERCLIP_MAX_AGENT_TASK_DEPTH=4 \
+  HOUSE_TEXTURES=/app/ui/dist/house-textures
 
 EXPOSE 3100
 

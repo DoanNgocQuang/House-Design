@@ -983,6 +983,8 @@ Minimum event set:
 - `issue.document.created`
 - `issue.document.updated`
 - `issue.document.deleted`
+- `issue.interaction.created`
+- `issue.interaction.updated`
 - `issue.relations.updated`
 - `issue.checked_out`
 - `issue.released`

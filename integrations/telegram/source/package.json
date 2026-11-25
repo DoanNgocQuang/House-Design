@@ -1,0 +1,21 @@
+{
+  "name": "paperclip-plugin-telegram",
+  "version": "0.8.1",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mvanhorn/paperclip-plugin-telegram.git"
+  },
+  "main": "./dist/index.js",
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js"
+  },
+  "peerDependencies": {
+    "@paperclipai/plugin-sdk": "*",
+    "@paperclipai/shared": "*",
+    "react": ">=18",
+    "react-dom": ">=18"
+  }
+}

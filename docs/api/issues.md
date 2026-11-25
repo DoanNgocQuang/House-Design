@@ -370,6 +370,8 @@ POST /api/companies/{companyId}/issues/{issueId}/attachments
 Content-Type: multipart/form-data
 ```
 
+Uploading a file whose name matches an agent-made file already on the issue overwrites that file in place: it keeps its id and links. Files people uploaded are never overwritten, and an upload sent with a comment never overwrites.
+
 ### List
 
 ```
@@ -381,6 +383,8 @@ GET /api/issues/{issueId}/attachments
 ```
 GET /api/attachments/{attachmentId}/content
 ```
+
+Add `?as=png` to get an SVG drawing as a PNG image.
 
 ### Delete
 

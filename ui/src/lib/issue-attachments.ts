@@ -3,6 +3,7 @@ import { isMarkdownAttachmentContent } from "@paperclipai/shared";
 import { isImageLikeOutput, isVideoLikeOutput } from "./issue-output";
 import { isPatchFile } from "./patch";
 import { isHtmlPreview } from "./html-preview";
+import { isModelAttachment } from "./model-preview";
 
 type AttachmentPathLike = {
   contentPath: string;
@@ -41,6 +42,11 @@ export function isMarkdownAttachment(
   attachment: Pick<IssueAttachment, "contentType" | "originalFilename">,
 ) {
   return isMarkdownAttachmentContent(attachment);
+}
+
+/** Attachments that open in the task side panel: text previews and 3D models (.glb). */
+export function opensInTaskPanel(attachment: { contentType: string; originalFilename?: string | null }) {
+  return isTextAttachment(attachment) || isModelAttachment(attachment);
 }
 
 export function isTextAttachment(attachment: {
